@@ -1,3 +1,4 @@
+use std::ops::DerefMut;
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::{AppResult, AppState, Deserialize, Serialize};
 use axum::extract::State;
@@ -21,6 +22,7 @@ pub async fn get_playlists(
         LEFT JOIN songs s on fc.song_id = s.song_id
         WHERE parent_id IS NOT NULL
         GROUP BY 1
+        ORDER BY f.name
     "#,
     )
     .map(|row: SqliteRow| {
@@ -35,7 +37,7 @@ pub async fn get_playlists(
             cover_art: row.get("cover_art_id"),
         }
     })
-    .fetch_all(&mut conn)
+    .fetch_all( conn.deref_mut())
     .await?;
 
     Ok(format.render(GetPlaylistsResponse {

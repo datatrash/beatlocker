@@ -1,3 +1,4 @@
+use std::ops::DerefMut;
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::{AppResult, AppState};
 use axum::extract::{Query, State};
@@ -33,7 +34,7 @@ pub async fn get_indexes(
                 album_count: 1,
             }
         })
-        .fetch_all(&mut conn)
+        .fetch_all(conn.deref_mut())
         .await?;
 
     if folders.is_empty() {
@@ -48,6 +49,7 @@ pub async fn get_indexes(
             name: index.to_string(),
             artist: artist.collect_vec(),
         })
+        .sorted_by_key(|index| index.name.clone())
         .collect();
 
     Ok(format.render(GetIndexesResponse {

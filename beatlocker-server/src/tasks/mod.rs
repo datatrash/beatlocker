@@ -1,24 +1,23 @@
+#![allow(dead_code, unused)]
 use crate::db::{DbAlbum, DbArtist, DbCoverArt, DbFolder, DbFolderChild, DbSong};
 use crate::tasks::extract_metadata::extract_metadata;
-use crate::{uri_to_uuid, AppResult, Db};
+use crate::{reqwest_client, uri_to_uuid, AppResult, Db, ServerOptions};
 
 use crate::tasks::providers::{
-    FindCoverArtQuery, FindReleaseQuery, InfoProvider, InfoProviderList, InfoProviderOptions,
+    FindCoverArtQuery, InfoProvider, InfoProviderList, InfoProviderOptions, ProviderUri, Release,
 };
 use async_recursion::async_recursion;
 use chrono::{DateTime, Utc};
-use itertools::Itertools;
-use reqwest::Client;
 use sqlx::sqlite::SqliteRow;
 use sqlx::types::Uuid;
 use sqlx::Row;
-use std::ffi::OsStr;
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
+use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tokio::sync::mpsc::Sender;
-use tokio::sync::oneshot::Receiver;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::task::JoinSet;
 use tracing::{debug, error, info, warn};
 
 mod extract_metadata;
@@ -26,45 +25,68 @@ mod providers;
 
 #[derive(Debug)]
 pub enum TaskMessage {
-    ImportFolder(Arc<Db>, ImportFolderOptions),
-    ImportMissingAlbumCoverArt(Arc<Db>, ImportMissingCoverArtOptions),
-    ImportMissingArtistCoverArt(Arc<Db>, ImportMissingCoverArtOptions),
-    ImportMissingSongCoverArt(Arc<Db>, ImportMissingCoverArtOptions),
+    ImportFolder(PathBuf, Option<Uuid>),
+    ImportMissingAlbumCoverArt,
+    ImportMissingArtistCoverArt,
+    ImportMissingSongCoverArt,
     Shutdown,
 }
 
-pub async fn start_task_runner() -> AppResult<(Sender<TaskMessage>, Receiver<()>)> {
+pub enum TaskReply {
+    ShutdownComplete,
+}
+
+pub struct TaskState {
+    db: Arc<Db>,
+    now_provider: Arc<Box<dyn Fn() -> DateTime<Utc> + Send + Sync>>,
+    provider_list: Arc<InfoProviderList>,
+    root_path: PathBuf,
+}
+
+pub async fn start_task_runner(
+    db: Arc<Db>,
+    options: &ServerOptions,
+) -> AppResult<(Sender<TaskMessage>, Receiver<TaskReply>)> {
     let (tx, mut rx) = mpsc::channel(32);
-    let (done_tx, done_rx) = oneshot::channel();
+    let (reply_tx, reply_rx) = mpsc::channel(32);
+
+    let task_state = Arc::new(TaskState {
+        db: db.clone(),
+        now_provider: options.now_provider.clone(),
+        provider_list: Arc::new(InfoProviderList::new(&InfoProviderOptions {
+            discogs_token: options.discogs_token.clone(),
+        })),
+        root_path: options.path.clone(),
+    });
+
+    db.insert_folder_if_not_exists(&DbFolder {
+        folder_id: Uuid::nil(),
+        parent_id: None,
+        uri: "root".to_owned(),
+        name: "root".to_owned(),
+        cover_art_id: None,
+        created: (task_state.now_provider)(),
+    })
+    .await?;
 
     tokio::spawn(async move {
         while let Some(message) = rx.recv().await {
             let result = match message {
-                TaskMessage::ImportFolder(db, options) => import_folder(&db, options).await,
-                TaskMessage::ImportMissingAlbumCoverArt(db, options) => {
-                    let provider_list = Arc::new(InfoProviderList::new(&InfoProviderOptions {
-                        discogs_token: options.discogs_token.clone(),
-                    }));
-
-                    import_missing_album_cover_art(&db, provider_list).await
+                TaskMessage::ImportFolder(path, parent_folder_id) => {
+                    import_folder(task_state.clone(), &path, parent_folder_id).await
                 }
-                TaskMessage::ImportMissingArtistCoverArt(db, options) => {
-                    let provider_list = Arc::new(InfoProviderList::new(&InfoProviderOptions {
-                        discogs_token: options.discogs_token.clone(),
-                    }));
-
-                    import_missing_artist_cover_art(&db, provider_list).await
+                TaskMessage::ImportMissingAlbumCoverArt => {
+                    import_missing_album_cover_art(task_state.clone()).await
                 }
-                TaskMessage::ImportMissingSongCoverArt(db, options) => {
-                    let provider_list = Arc::new(InfoProviderList::new(&InfoProviderOptions {
-                        discogs_token: options.discogs_token.clone(),
-                    }));
-
-                    import_missing_song_cover_art(&db, provider_list).await
+                TaskMessage::ImportMissingArtistCoverArt => {
+                    import_missing_artist_cover_art(task_state.clone()).await
+                }
+                TaskMessage::ImportMissingSongCoverArt => {
+                    import_missing_song_cover_art(task_state.clone()).await
                 }
                 TaskMessage::Shutdown => {
                     info!("Shutting down background tasks...");
-                    let _ = done_tx.send(());
+                    let _ = reply_tx.send(TaskReply::ShutdownComplete);
                     break;
                 }
             };
@@ -78,200 +100,208 @@ pub async fn start_task_runner() -> AppResult<(Sender<TaskMessage>, Receiver<()>
         }
     });
 
-    Ok((tx, done_rx))
-}
-
-pub struct ImportFolderOptions {
-    pub root_path: PathBuf,
-    pub discogs_token: Option<String>,
-    pub now_provider: Arc<Box<dyn Fn() -> DateTime<Utc> + Send + Sync>>,
-}
-
-impl Debug for ImportFolderOptions {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str("[ImportFolderOptions")
-    }
-}
-
-pub async fn import_folder(db: &Db, options: ImportFolderOptions) -> AppResult<()> {
-    let provider_list = Arc::new(InfoProviderList::new(&InfoProviderOptions {
-        discogs_token: options.discogs_token.clone(),
-    }));
-
-    db.insert_folder_if_not_exists(&DbFolder {
-        folder_id: Uuid::nil(),
-        parent_id: None,
-        uri: "root".to_owned(),
-        name: "root".to_owned(),
-        cover_art_id: None,
-        created: (options.now_provider)(),
-    })
-    .await?;
-    import_folder_impl(db, provider_list, &options, &options.root_path, Uuid::nil()).await?;
-    Ok(())
+    Ok((tx, reply_rx))
 }
 
 #[async_recursion]
-async fn import_folder_impl(
-    db: &Db,
-    provider_list: Arc<InfoProviderList>,
-    options: &ImportFolderOptions,
+pub async fn import_folder(
+    state: Arc<TaskState>,
     folder: &Path,
-    parent_folder_id: Uuid,
+    parent_folder_id: Option<Uuid>,
 ) -> AppResult<()> {
     debug!(?folder, "Processing folder");
-    let extension = OsStr::new("ogg");
-
-    let mut dirs = vec![];
-    let mut files = vec![];
-    for entry in std::fs::read_dir(folder)? {
-        let entry = entry?;
-        let file_type = entry.file_type()?;
-        if file_type.is_dir() {
-            dirs.push(entry.path());
-        }
-        if file_type.is_file() && entry.path().extension() == Some(extension) {
-            files.push(entry.path());
-        }
-    }
 
     // Insert folder in DB
-    let folder_id = if folder == options.root_path {
+    let folder_id = if folder == state.root_path {
         Uuid::nil()
     } else {
         let folder_name = folder.file_name().unwrap();
         let folder_uri = format!("path:{}", folder.to_str().unwrap());
 
-        db.insert_folder_if_not_exists(&DbFolder {
-            folder_id: uri_to_uuid(&folder_uri),
-            parent_id: Some(parent_folder_id),
-            uri: folder_uri.clone(),
-            name: folder_name.to_string_lossy().to_string(),
-            cover_art_id: None,
-            created: (options.now_provider)(),
-        })
-        .await?
+        state
+            .db
+            .insert_folder_if_not_exists(&DbFolder {
+                folder_id: uri_to_uuid(&folder_uri),
+                parent_id: parent_folder_id,
+                uri: folder_uri.clone(),
+                name: folder_name.to_string_lossy().to_string(),
+                cover_art_id: None,
+                created: (state.now_provider)(),
+            })
+            .await?
     };
 
-    for file in files.into_iter().sorted() {
-        import_file(
-            db,
-            provider_list.clone(),
-            options,
-            file.as_path(),
-            folder_id,
-        )
-        .await?;
+    let mut set = JoinSet::new();
+    let mut read_dir = tokio::fs::read_dir(folder).await?;
+    loop {
+        let entry = read_dir.next_entry().await?;
+        if let Some(entry) = entry {
+            let file_type = entry.file_type().await?;
+            if file_type.is_dir() {
+                let state = state.clone();
+                let entry = entry.path().clone();
+                let folder_id = folder_id.clone();
+                set.spawn(
+                    async move { import_folder(state, entry.as_path(), Some(folder_id)).await },
+                );
+            }
+            if file_type.is_file()
+                && entry
+                    .path()
+                    .extension()
+                    .map(|s| s.to_string_lossy().to_lowercase())
+                    == Some("ogg".to_string())
+            {
+                let folder_id = folder_id.clone();
+                let state = state.clone();
+                let entry = entry.path().clone();
+                set.spawn(async move { import_file(state, entry.as_path(), folder_id).await });
+            }
+        } else {
+            break;
+        }
     }
-    for dir in dirs.into_iter().sorted() {
-        import_folder_impl(db, provider_list.clone(), options, dir.as_path(), folder_id).await?;
-    }
+
+    await_join_set(set).await?;
 
     debug!(?folder, "Processing folder done");
     Ok(())
 }
 
-async fn import_file<'a>(
-    db: &'a Db,
-    provider_list: Arc<InfoProviderList>,
-    options: &'a ImportFolderOptions,
-    path: &'a Path,
-    folder_id: Uuid,
-) -> AppResult<()> {
+async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> AppResult<()> {
     let folder_child_path = path.to_str().unwrap().to_string();
-    if db
+    if state
+        .db
         .find_folder_child_by_path(&folder_child_path)
         .await?
         .is_some()
     {
+        debug!(?path, "Rejecting file due to path");
         return Ok(());
     }
 
-    debug!(?path, "Importing file");
-    let file = std::fs::File::open(path)?;
-    let metadata = extract_metadata(&file)?;
+    warn!(?path, "Importing file");
+    let (metadata, file_size) = {
+        let file = std::fs::File::open(path)?;
+        (
+            extract_metadata(path.file_name(), &file)?,
+            file.metadata()?.len() as u32,
+        )
+    };
     if metadata.is_none() {
         warn!(?path, "Could not extract metadata");
-        return Err(anyhow::format_err!("Could not extract metadata").into());
+        return Ok(());
     }
     let metadata = metadata.unwrap();
 
-    if let Some(release) = provider_list
+    let release = Release {
+        album: metadata
+            .album
+            .map(|a| ((ProviderUri::from_provider("tags", &a), a.to_string()))),
+        album_artist: None,
+        artist: Some((
+            ProviderUri::from_provider("tags", &metadata.artist),
+            metadata.artist,
+        )),
+        song: ((
+            ProviderUri::from_provider("tags", &metadata.title),
+            metadata.title.to_string(),
+        )),
+        genre: None,
+        release_date: None,
+    };
+
+    /*
+    state
+        .provider_list
         .find_release(&FindReleaseQuery {
             album: metadata.album.as_deref(),
             artist: &metadata.artist,
             song_title: Some(&metadata.title),
         })
         .await?
-    {
-        let album_id = if let Some((album_uri, album_title)) = &release.album {
-            Some(
-                db.insert_album_if_not_exists(&DbAlbum {
+        .unwrap_or_else(||
+     */
+
+    let album_id = if let Some((album_uri, album_title)) = &release.album {
+        Some(
+            state
+                .db
+                .insert_album_if_not_exists(&DbAlbum {
                     album_id: uri_to_uuid(album_uri.as_str()),
                     uri: album_uri.to_string(),
                     title: album_title.clone(),
                     cover_art_id: None,
                 })
                 .await?,
-            )
-        } else {
-            None
-        };
+        )
+    } else {
+        None
+    };
 
-        let artist_id = if let Some((artist_uri, artist_name)) = &release.artist {
-            Some(
-                db.insert_artist_if_not_exists(&DbArtist {
+    let artist_id = if let Some((artist_uri, artist_name)) = &release.artist {
+        Some(
+            state
+                .db
+                .insert_artist_if_not_exists(&DbArtist {
                     artist_id: uri_to_uuid(artist_uri.as_str()),
                     uri: artist_uri.to_string(),
                     name: artist_name.clone(),
                     cover_art_id: None,
                 })
                 .await?,
-            )
-        } else {
-            None
-        };
+        )
+    } else {
+        None
+    };
 
-        let album_artist_id = if let Some((artist_uri, artist_name)) = &release.album_artist {
-            Some(
-                db.insert_artist_if_not_exists(&DbArtist {
+    let album_artist_id = if let Some((artist_uri, artist_name)) = &release.album_artist {
+        Some(
+            state
+                .db
+                .insert_artist_if_not_exists(&DbArtist {
                     artist_id: uri_to_uuid(artist_uri.as_str()),
                     uri: artist_uri.to_string(),
                     name: artist_name.clone(),
                     cover_art_id: None,
                 })
                 .await?,
-            )
-        } else {
-            None
-        };
+        )
+    } else {
+        None
+    };
 
-        if let Some(album_id) = album_id {
-            if let Some(actual_artist_id) = album_artist_id.or(artist_id) {
-                db.upsert_album_artist(album_id, actual_artist_id).await?;
-            }
+    if let Some(album_id) = album_id {
+        if let Some(actual_artist_id) = album_artist_id.or(artist_id) {
+            state
+                .db
+                .upsert_album_artist(album_id, actual_artist_id)
+                .await?;
         }
+    }
 
-        let (song_uri, song_title) = &release.song;
-        let suffix = path.extension().and_then(|s| s.to_str());
-        let content_type = match &suffix {
-            Some("ogg") => Some("audio/ogg"),
-            _ => None,
-        };
+    let (song_uri, song_title) = &release.song;
+    let suffix = path.extension().and_then(|s| s.to_str());
+    let content_type = match &suffix {
+        Some("ogg") => Some("audio/ogg"),
+        _ => None,
+    };
 
-        let song_id = Some(
-            db.insert_song_if_not_exists(&DbSong {
+    let song_id = Some(
+        state
+            .db
+            .insert_song_if_not_exists(&DbSong {
                 song_id: uri_to_uuid(song_uri.as_str()),
                 uri: song_uri.to_string(),
                 title: song_title.clone(),
-                created: (options.now_provider)(),
+                created: (state.now_provider)(),
                 date: release.release_date,
                 cover_art_id: None,
                 artist_id,
                 album_id,
                 content_type: content_type.map(|s| s.to_owned()),
                 suffix: suffix.map(|s| s.to_owned()),
-                size: Some(file.metadata()?.len() as u32),
+                size: Some(file_size),
                 track_number: metadata.track_number,
                 disc_number: metadata.disc_number,
                 duration: metadata.duration,
@@ -279,37 +309,24 @@ async fn import_file<'a>(
                 genre: release.genre,
             })
             .await?,
-        );
+    );
 
-        db.insert_folder_child_if_not_exists(&DbFolderChild {
-            folder_child_id: uri_to_uuid(song_uri.as_str()),
+    state
+        .db
+        .insert_folder_child_if_not_exists(&DbFolderChild {
+            folder_child_id: uri_to_uuid(folder_child_path.as_str()),
             folder_id,
-            uri: song_uri.to_string(),
+            uri: folder_child_path.to_string(),
             path: folder_child_path,
             name: song_title.clone(),
             song_id,
         })
         .await?;
-    }
 
     Ok(())
 }
 
-#[derive(Clone)]
-pub struct ImportMissingCoverArtOptions {
-    pub discogs_token: Option<String>,
-}
-
-impl Debug for ImportMissingCoverArtOptions {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str("[ImportMissingCoverArtOptions]")
-    }
-}
-
-pub async fn import_missing_album_cover_art(
-    db: &Db,
-    provider_list: Arc<InfoProviderList>,
-) -> AppResult<()> {
+pub async fn import_missing_album_cover_art(state: Arc<TaskState>) -> AppResult<()> {
     let results = sqlx::query(
         r#"
         SELECT albums.*, ar.name AS artist_name FROM albums
@@ -324,9 +341,10 @@ pub async fn import_missing_album_cover_art(
         let name: String = row.get("artist_name");
         (id, name, title)
     })
-    .fetch_all(&mut db.conn().await?)
+    .fetch_all(state.db.conn().await?.deref_mut())
     .await?;
 
+    let mut set = JoinSet::new();
     for (album_id, artist_name, album_title) in results {
         debug!(
             ?album_id,
@@ -334,41 +352,46 @@ pub async fn import_missing_album_cover_art(
             ?album_title,
             "Trying to find album cover art"
         );
-        if let Some(url) = provider_list
-            .find_cover_art(&FindCoverArtQuery {
-                album: Some(&album_title),
-                artist: Some(&artist_name),
-                song_title: None,
-            })
-            .await?
-        {
-            let cover_art_id = insert_cover_art(db, &url).await?;
+        let state = state.clone();
+        set.spawn(async move {
+            if let Some(url) = state
+                .provider_list
+                .find_cover_art(&FindCoverArtQuery {
+                    album: Some(&album_title),
+                    artist: Some(&artist_name),
+                    song_title: None,
+                })
+                .await?
+            {
+                let cover_art_id = insert_cover_art(&state.db, &url).await?;
 
-            // Update album and its songs
-            let rows = sqlx::query("UPDATE albums SET cover_art_id = ? WHERE album_id = ?")
+                // Update album and its songs
+                let rows = sqlx::query("UPDATE albums SET cover_art_id = ? WHERE album_id = ?")
+                    .bind(cover_art_id)
+                    .bind(album_id)
+                    .execute(state.db.conn().await?.deref_mut())
+                    .await?;
+                debug!("{:?} album rows affected", rows.rows_affected());
+                let rows = sqlx::query(
+                    "UPDATE songs SET cover_art_id = ? WHERE album_id = ? AND cover_art_id IS NULL",
+                )
                 .bind(cover_art_id)
                 .bind(album_id)
-                .execute(&mut db.conn().await?)
+                .execute(state.db.conn().await?.deref_mut())
                 .await?;
-            debug!("{:?} album rows affected", rows.rows_affected());
-            let rows = sqlx::query(
-                "UPDATE songs SET cover_art_id = ? WHERE album_id = ? AND cover_art_id IS NULL",
-            )
-            .bind(cover_art_id)
-            .bind(album_id)
-            .execute(&mut db.conn().await?)
-            .await?;
-            debug!("{:?} song rows affected", rows.rows_affected());
-        }
+                debug!("{:?} song rows affected", rows.rows_affected());
+            }
+
+            Ok(())
+        });
     }
+
+    await_join_set(set).await?;
 
     Ok(())
 }
 
-pub async fn import_missing_song_cover_art(
-    db: &Db,
-    provider_list: Arc<InfoProviderList>,
-) -> AppResult<()> {
+pub async fn import_missing_song_cover_art(state: Arc<TaskState>) -> AppResult<()> {
     let results = sqlx::query(
         r#"
         SELECT songs.song_id, songs.title, al.title AS album_title, ar.name AS artist_name FROM songs
@@ -385,9 +408,10 @@ pub async fn import_missing_song_cover_art(
         let artist_name: Option<String> = row.get("artist_name");
         (song_id, album_title, title, artist_name)
     })
-    .fetch_all(&mut db.conn().await?)
+    .fetch_all(state.db.conn().await?.deref_mut())
     .await?;
 
+    let mut set = JoinSet::new();
     for (song_id, album_title, song_title, artist_name) in results {
         debug!(
             ?song_id,
@@ -396,31 +420,36 @@ pub async fn import_missing_song_cover_art(
             ?artist_name,
             "Trying to find song cover art"
         );
-        if let Some(url) = provider_list
-            .find_cover_art(&FindCoverArtQuery {
-                album: album_title.as_deref(),
-                artist: artist_name.as_deref(),
-                song_title: Some(song_title.as_str()),
-            })
-            .await?
-        {
-            let cover_art_id = insert_cover_art(db, &url).await?;
+        let state = state.clone();
+        set.spawn(async move {
+            if let Some(url) = state
+                .provider_list
+                .find_cover_art(&FindCoverArtQuery {
+                    album: album_title.as_deref(),
+                    artist: artist_name.as_deref(),
+                    song_title: Some(song_title.as_str()),
+                })
+                .await?
+            {
+                let cover_art_id = insert_cover_art(&state.db, &url).await?;
 
-            sqlx::query("UPDATE songs SET cover_art_id = ? WHERE song_id = ?")
-                .bind(cover_art_id)
-                .bind(song_id)
-                .execute(&mut db.conn().await?)
-                .await?;
-        }
+                sqlx::query("UPDATE songs SET cover_art_id = ? WHERE song_id = ?")
+                    .bind(cover_art_id)
+                    .bind(song_id)
+                    .execute(state.db.conn().await?.deref_mut())
+                    .await?;
+            }
+
+            Ok(())
+        });
     }
+
+    await_join_set(set).await?;
 
     Ok(())
 }
 
-pub async fn import_missing_artist_cover_art(
-    db: &Db,
-    provider_list: Arc<InfoProviderList>,
-) -> AppResult<()> {
+pub async fn import_missing_artist_cover_art(state: Arc<TaskState>) -> AppResult<()> {
     let results = sqlx::query(
         r#"
         SELECT al.title, artists.name AS artist_name, artists.artist_id FROM artists
@@ -435,9 +464,10 @@ pub async fn import_missing_artist_cover_art(
         let name: String = row.get("artist_name");
         (id, name, title)
     })
-    .fetch_all(&mut db.conn().await?)
+    .fetch_all(state.db.conn().await?.deref_mut())
     .await?;
 
+    let mut set = JoinSet::new();
     for (artist_id, artist_name, album_title) in results {
         debug!(
             ?artist_id,
@@ -445,30 +475,38 @@ pub async fn import_missing_artist_cover_art(
             ?album_title,
             "Trying to find artist cover art"
         );
-        if let Some(url) = provider_list
-            .find_artist_photo(&FindCoverArtQuery {
-                album: Some(&album_title),
-                artist: Some(&artist_name),
-                song_title: None,
-            })
-            .await?
-        {
-            let cover_art_id = insert_cover_art(db, &url).await?;
-            // Update artist
-            let rows = sqlx::query("UPDATE artists SET cover_art_id = ? WHERE artist_id = ?")
-                .bind(cover_art_id)
-                .bind(artist_id)
-                .execute(&mut db.conn().await?)
-                .await?;
-            debug!("{:?} artist rows affected", rows.rows_affected());
-        }
+        let state = state.clone();
+        set.spawn(async move {
+            if let Some(url) = state
+                .provider_list
+                .find_artist_photo(&FindCoverArtQuery {
+                    album: Some(&album_title),
+                    artist: Some(&artist_name),
+                    song_title: None,
+                })
+                .await?
+            {
+                let cover_art_id = insert_cover_art(&state.db, &url).await?;
+                // Update artist
+                let rows = sqlx::query("UPDATE artists SET cover_art_id = ? WHERE artist_id = ?")
+                    .bind(cover_art_id)
+                    .bind(artist_id)
+                    .execute(state.db.conn().await?.deref_mut())
+                    .await?;
+                debug!("{:?} artist rows affected", rows.rows_affected());
+            }
+
+            Ok(())
+        });
     }
+
+    await_join_set(set).await?;
 
     Ok(())
 }
 
 async fn insert_cover_art(db: &Db, url: &str) -> AppResult<Uuid> {
-    let client = Client::builder().build()?;
+    let client = reqwest_client();
 
     // Find out the actual (potentially redirected) url first
     let head = client.head(url).send().await?;
@@ -491,4 +529,14 @@ async fn insert_cover_art(db: &Db, url: &str) -> AppResult<Uuid> {
                 .await?)
         }
     }
+}
+
+async fn await_join_set(mut set: JoinSet<AppResult<()>>) -> AppResult<()> {
+    while let Some(result) = set.join_next().await {
+        if let Err(e) = result? {
+            error!(?e, "Error in background task");
+        }
+    }
+
+    Ok(())
 }

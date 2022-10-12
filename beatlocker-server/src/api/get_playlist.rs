@@ -1,3 +1,4 @@
+use std::ops::DerefMut;
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::api::model::SubsonicSong;
 use crate::api::queries::{get_subsonic_songs, GetSubsonicSongsQuery};
@@ -47,7 +48,7 @@ pub async fn get_playlist(
             entry: vec![],
         }
     })
-    .fetch_optional(&mut conn)
+    .fetch_optional(conn.deref_mut())
     .await?;
 
     match playlist {

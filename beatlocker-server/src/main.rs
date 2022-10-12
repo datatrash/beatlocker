@@ -1,10 +1,10 @@
 use beatlocker_server::{
     enable_default_tracing, App, AppResult, DatabaseOptions, ServerOptions, TaskMessage,
-    SERVER_VERSION, USER_AGENT,
+    SERVER_VERSION,
 };
 use clap::Parser;
 use std::path::PathBuf;
-use tokio::signal;
+use tokio::{signal, task};
 use tracing::info;
 
 #[derive(Parser)]
@@ -40,8 +40,6 @@ async fn main() -> AppResult<()> {
     info!("beatlocker {}", SERVER_VERSION);
     info!("Server starting...");
 
-    musicbrainz_rs::config::set_user_agent(USER_AGENT);
-
     let options = ServerOptions {
         path: PathBuf::from(cli.library_path),
         database: DatabaseOptions {
@@ -58,13 +56,20 @@ async fn main() -> AppResult<()> {
         .serve(app.app.clone().into_make_service())
         .with_graceful_shutdown(shutdown_signal());
 
-    let (task_tx, done_rx) = app.start_background_tasks().await?;
-
     info!("Server started");
+
+    let mgr = app.task_manager.clone();
+    let msg = TaskMessage::ImportFolder {
+        state: app.task_state(),
+        folder: app.options.path.clone(),
+        parent_folder_id: None,
+    };
+    let join = task::spawn(async move { mgr.send(msg).await });
+
     server.await?;
 
-    task_tx.send(TaskMessage::Shutdown).await?;
-    done_rx.await?;
+    app.task_manager.shutdown().await?;
+    let _ = join.await?;
 
     info!("Server is shutdown");
     Ok(())

@@ -1,10 +1,9 @@
 use crate::tasks::providers::{FindCoverArtQuery, FindReleaseQuery, InfoProvider, Release};
-use crate::AppResult;
+use crate::{reqwest_client, AppResult};
 use axum::async_trait;
-use reqwest::header::{HeaderMap, CONTENT_TYPE, USER_AGENT};
-use reqwest::Client;
+use reqwest::header::CONTENT_TYPE;
+use reqwest::Method;
 use serde::Deserialize;
-use tracing::info;
 
 #[derive(Debug, Deserialize)]
 struct DiscogsSearchResponse {
@@ -56,23 +55,24 @@ impl InfoProvider for DiscogsProvider {
         &self,
         query: &FindCoverArtQuery<'a>,
     ) -> AppResult<Option<String>> {
-        let mut headers = HeaderMap::new();
-        headers.insert(USER_AGENT, crate::USER_AGENT.parse().unwrap());
-        headers.insert(CONTENT_TYPE, "application/json".parse().unwrap());
-        let client = Client::builder().default_headers(headers).build()?;
-        let url = format!(
-            "https://api.discogs.com/database/search?release_title={}&artist={}&token={}",
-            query.album.unwrap_or_default(),
-            query.artist.unwrap_or_default(),
-            &self.token
-        );
-        info!("{}", url);
-        let response = client.get(&url).send().await?;
+        let response = reqwest_client()
+            .request(Method::GET, "https://api.discogs.com/database/search")
+            .header(CONTENT_TYPE, "application/json")
+            .query(&[
+                ("release_title", query.album.unwrap_or_default()),
+                ("artist", query.artist.unwrap_or_default()),
+                ("token", &self.token),
+            ])
+            .send()
+            .await?;
         let search_response = response.json::<DiscogsSearchResponse>().await?;
         for result in search_response.results {
             if let Some(resource_url) = &result.resource_url {
-                let url = format!("{}?token={}", resource_url, &self.token);
-                let response = client.get(&url).send().await?;
+                let response = reqwest_client()
+                    .request(Method::GET, resource_url)
+                    .query(&[("token", &self.token)])
+                    .send()
+                    .await?;
                 let resource_response = response.json::<DiscogsResourceResponse>().await?;
                 let artists = resource_response.artists.unwrap_or_default();
                 for artist in artists {

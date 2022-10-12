@@ -8,7 +8,7 @@ use musicbrainz_rs::entity::recording::{Recording, RecordingSearchQuery};
 use musicbrainz_rs::entity::release::Release;
 use musicbrainz_rs::entity::CoverartResponse;
 use musicbrainz_rs::{FetchCoverart, Search};
-use tracing::info;
+use tracing::{info, warn};
 
 const PROVIDER_ID: &str = "mb";
 
@@ -129,31 +129,35 @@ async fn find_recording_releases(
         query_builder.and().release(album);
     }
 
-    let recordings = Recording::search(query_builder.build()).execute().await?;
-
-    Ok(recordings
-        .entities
-        .into_iter()
-        .flat_map(|recording| {
-            let releases = recording.releases.clone().unwrap_or_default();
-            releases
-                .into_iter()
-                .map(|release| (recording.clone(), release))
-                .collect_vec()
-        })
-        .sorted_by_key(|(_rec, rel)| {
-            let max_track_count = if let Some(media) = &rel.media {
-                media
-                    .iter()
-                    .map(|m| m.track_count)
-                    .max()
-                    .unwrap_or_default()
-            } else {
-                0
-            };
-            let album = album.unwrap_or_default();
-            let distance = damerau_levenshtein(album, &rel.title);
-            (max_track_count, distance)
-        })
-        .collect_vec())
+    match Recording::search(query_builder.build()).execute().await {
+        Ok(recordings) => Ok(recordings
+            .entities
+            .into_iter()
+            .flat_map(|recording| {
+                let releases = recording.releases.clone().unwrap_or_default();
+                releases
+                    .into_iter()
+                    .map(|release| (recording.clone(), release))
+                    .collect_vec()
+            })
+            .sorted_by_key(|(_rec, rel)| {
+                let max_track_count = if let Some(media) = &rel.media {
+                    media
+                        .iter()
+                        .map(|m| m.track_count)
+                        .max()
+                        .unwrap_or_default()
+                } else {
+                    0
+                };
+                let album = album.unwrap_or_default();
+                let distance = damerau_levenshtein(album, &rel.title);
+                (max_track_count, distance)
+            })
+            .collect_vec()),
+        Err(e) => {
+            warn!(?e, "Could not retrieve releases");
+            Ok(vec![])
+        }
+    }
 }

@@ -1,19 +1,22 @@
+mod db_pool;
 mod model;
 
 pub use model::*;
 use std::fmt::{Debug, Formatter};
+use std::ops::DerefMut;
 use std::path::PathBuf;
 
 use crate::AppResult;
-use sqlx::pool::PoolConnection;
-use sqlx::sqlite::{SqliteConnectOptions, SqliteRow};
+use db_pool::DbPool;
+use deadpool::managed::{Object, Pool};
+use sqlx::sqlite::{SqliteConnectOptions, SqliteRow, SqliteSynchronous};
 use sqlx::types::Uuid;
-use sqlx::{Pool, Row, Sqlite};
+use sqlx::Row;
 use std::str::FromStr;
 use tracing::debug;
 
 pub struct Db {
-    pool: Pool<Sqlite>,
+    pool: Pool<DbPool>,
 }
 
 impl Debug for Db {
@@ -29,8 +32,8 @@ pub struct DatabaseOptions {
 }
 
 impl Db {
-    pub async fn new(options: &DatabaseOptions) -> AppResult<Self> {
-        let pool_options = if options.in_memory {
+    pub fn new(options: &DatabaseOptions) -> AppResult<Self> {
+        let connect_options = if options.in_memory {
             SqliteConnectOptions::from_str("sqlite::memory:")?
         } else {
             SqliteConnectOptions::new()
@@ -42,20 +45,27 @@ impl Db {
                         .join("sqlite.db"),
                 )
                 .create_if_missing(true)
+                .synchronous(SqliteSynchronous::Normal)
         };
-        let pool = Pool::<Sqlite>::connect_with(pool_options).await?;
-        sqlx::migrate!("./migrations").run(&pool).await?;
+        let mgr = DbPool::new(connect_options);
+        let pool: Pool<DbPool> = Pool::builder(mgr).build()?;
 
         Ok(Db { pool })
     }
 
-    pub async fn conn(&self) -> AppResult<PoolConnection<Sqlite>> {
-        Ok(self.pool.acquire().await?)
+    pub async fn migrate(&self) -> AppResult<()> {
+        sqlx::migrate!("./migrations")
+            .run(self.pool.get().await?.deref_mut())
+            .await?;
+        Ok(())
+    }
+
+    pub async fn conn(&self) -> AppResult<Object<DbPool>> {
+        Ok(self.pool.get().await?)
     }
 
     pub async fn insert_album_if_not_exists(&self, album: &DbAlbum) -> AppResult<Uuid> {
         debug!(?album, "Inserting album");
-        let mut conn = self.pool.acquire().await?;
 
         let id = sqlx::query(
             r#"
@@ -70,7 +80,7 @@ impl Db {
         .bind(&album.title)
         .bind(album.cover_art_id)
         .map(|row| row.get("album_id"))
-        .fetch_one(&mut conn)
+        .fetch_one(self.conn().await?.deref_mut())
         .await?;
 
         Ok(id)
@@ -78,7 +88,6 @@ impl Db {
 
     pub async fn insert_artist_if_not_exists(&self, artist: &DbArtist) -> AppResult<Uuid> {
         debug!(?artist, "Inserting artist");
-        let mut conn = self.pool.acquire().await?;
 
         let id = sqlx::query(
             r#"
@@ -93,15 +102,13 @@ impl Db {
         .bind(&artist.name)
         .bind(artist.cover_art_id)
         .map(|row| row.get("artist_id"))
-        .fetch_one(&mut conn)
+        .fetch_one(self.conn().await?.deref_mut())
         .await?;
 
         Ok(id)
     }
 
     pub async fn upsert_album_artist(&self, album_id: Uuid, artist_id: Uuid) -> AppResult<()> {
-        let mut conn = self.pool.acquire().await?;
-
         sqlx::query(
             r#"
         INSERT OR IGNORE INTO album_artists (album_id, artist_id)
@@ -110,43 +117,37 @@ impl Db {
         )
         .bind(album_id)
         .bind(artist_id)
-        .execute(&mut conn)
+        .execute(self.conn().await?.deref_mut())
         .await?;
 
         Ok(())
     }
 
     pub async fn find_folder_by_uri(&self, uri: &str) -> AppResult<Option<Uuid>> {
-        let mut conn = self.pool.acquire().await?;
-
         let result = sqlx::query("SELECT folder_id FROM folders WHERE uri = ?")
             .bind(uri)
             .map(|row: SqliteRow| row.get("folder_id"))
-            .fetch_optional(&mut conn)
+            .fetch_optional(self.conn().await?.deref_mut())
             .await?;
 
         Ok(result)
     }
 
     pub async fn find_folder_child_by_path(&self, path: &str) -> AppResult<Option<Uuid>> {
-        let mut conn = self.pool.acquire().await?;
-
         let result = sqlx::query("SELECT folder_child_id FROM folder_children WHERE path = ?")
             .bind(path)
             .map(|row: SqliteRow| row.get("folder_child_id"))
-            .fetch_optional(&mut conn)
+            .fetch_optional(self.conn().await?.deref_mut())
             .await?;
 
         Ok(result)
     }
 
     pub async fn find_cover_art(&self, cover_art_id: Uuid) -> AppResult<Option<Uuid>> {
-        let mut conn = self.pool.acquire().await?;
-
         let result = sqlx::query("SELECT cover_art_id FROM cover_art WHERE cover_art_id = ?")
             .bind(cover_art_id)
             .map(|row: SqliteRow| row.get("cover_art_id"))
-            .fetch_optional(&mut conn)
+            .fetch_optional(self.conn().await?.deref_mut())
             .await?;
 
         Ok(result)
@@ -154,8 +155,6 @@ impl Db {
 
     pub async fn insert_folder_if_not_exists(&self, folder: &DbFolder) -> AppResult<Uuid> {
         debug!(?folder, "Trying to insert folder");
-
-        let mut conn = self.pool.acquire().await?;
 
         let id = sqlx::query(
             r#"
@@ -172,7 +171,7 @@ impl Db {
         .bind(folder.cover_art_id)
         .bind(folder.created)
         .map(|row| row.get("folder_id"))
-        .fetch_one(&mut conn)
+        .fetch_one(self.conn().await?.deref_mut())
         .await?;
 
         Ok(id)
@@ -183,8 +182,6 @@ impl Db {
         child: &DbFolderChild,
     ) -> AppResult<Uuid> {
         debug!(?child, "Trying to insert folder child");
-
-        let mut conn = self.pool.acquire().await?;
 
         let id = sqlx::query(
             r#"
@@ -201,7 +198,7 @@ impl Db {
         .bind(&child.name)
         .bind(child.song_id)
         .map(|row| row.get("folder_child_id"))
-        .fetch_one(&mut conn)
+        .fetch_one(self.conn().await?.deref_mut())
         .await?;
 
         Ok(id)
@@ -209,8 +206,6 @@ impl Db {
 
     pub async fn insert_song_if_not_exists(&self, song: &DbSong) -> AppResult<Uuid> {
         debug!(?song, "Trying to insert song");
-
-        let mut conn = self.pool.acquire().await?;
 
         let id = sqlx::query(
             r#"
@@ -236,7 +231,7 @@ impl Db {
             .bind(song.duration.map(|d| d.num_seconds()))
             .bind(song.bit_rate)
             .map(|row| row.get("song_id"))
-        .fetch_one(&mut conn)
+        .fetch_one(self.conn().await?.deref_mut())
         .await?;
 
         Ok(id)
@@ -245,7 +240,6 @@ impl Db {
     pub async fn insert_cover_art_if_not_exists(&self, cover_art: &DbCoverArt) -> AppResult<Uuid> {
         let uri = &cover_art.uri;
         debug!(?uri, "Inserting cover art");
-        let mut conn = self.pool.acquire().await?;
 
         let id = sqlx::query(
             r#"
@@ -260,7 +254,7 @@ impl Db {
         .bind(&cover_art.uri)
         .bind(&cover_art.data)
         .map(|row| row.get("cover_art_id"))
-        .fetch_one(&mut conn)
+        .fetch_one(self.conn().await?.deref_mut())
         .await?;
 
         Ok(id)
@@ -273,11 +267,11 @@ mod tests {
 
     #[tokio::test]
     async fn can_migrate() -> AppResult<()> {
-        let _db = Db::new(&DatabaseOptions {
+        let db = Db::new(&DatabaseOptions {
             path: None,
             in_memory: true,
-        })
-        .await?;
+        })?;
+        db.migrate().await?;
         Ok(())
     }
 }

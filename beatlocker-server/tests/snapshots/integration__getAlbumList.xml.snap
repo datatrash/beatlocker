@@ -4,7 +4,7 @@ expression: res.xml_string().await
 ---
 <subsonic-response status="ok" version="1.16.1" type="beatlocker" serverVersion="unknown">
   <albumList>
-    <album id="60c6dd20-81d8-6ca9-5cdb-e86bebba78de" parent="00000000-0000-0000-0000-000000000000" isDir="true" name="Motorway (Original Motion Picture Soundtrack)" title="Motorway (Original Motion Picture Soundtrack)" songCount="2" duration="12" artist="Alex Gopher" artistId="80652c62-53d1-f363-2dcb-4431fb251509"/>
-    <album id="72474acb-e66b-35e4-dc4a-e823e2cac050" parent="00000000-0000-0000-0000-000000000000" isDir="true" name="Tiki" title="Tiki" songCount="2" duration="12" artist="Richard Bona" artistId="e122c66a-a11c-a09c-bebd-f9b5b8d572f5"/>
+    <album id="832e44af-9d23-c38e-34af-b7f4cf92b096" parent="00000000-0000-0000-0000-000000000000" isDir="true" name="Motorway (Original Motion Picture Soundtrack)" title="Motorway (Original Motion Picture Soundtrack)" songCount="2" duration="12" artist="Alex Gopher" artistId="be74adf7-0dfc-e5c6-e19e-0058776e90d1"/>
+    <album id="c9c5e1fd-c67e-a5ae-1af6-8e1bffd27f16" parent="00000000-0000-0000-0000-000000000000" isDir="true" name="Tiki" title="Tiki" songCount="2" duration="12" artist="Richard Bona" artistId="115dddbd-96dd-09c8-0cb6-c373d5c57ff2"/>
   </albumList>
 </subsonic-response>

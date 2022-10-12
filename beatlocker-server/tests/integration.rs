@@ -14,7 +14,7 @@ async fn integration_test() -> AppResult<()> {
     let options = ServerOptions {
         path: PathBuf::from("tests/data"),
         database: DatabaseOptions {
-            path: None,
+            path: Some(PathBuf::from(".")),
             in_memory: true,
         },
         now_provider: Arc::new(Box::new(|| {
@@ -27,7 +27,7 @@ async fn integration_test() -> AppResult<()> {
     let server = App::new(options).await?;
     let client = TestClient::new(server.app.clone());
 
-    server.run_background_tasks_once().await?;
+    server.import_all_folders().await?;
 
     let res = client.get("/rest/ping?f=json").send().await;
     assert_eq!(res.status(), StatusCode::OK);

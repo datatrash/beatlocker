@@ -1,9 +1,7 @@
 use crate::api::model::SubsonicAlbum;
 use crate::AppResult;
 
-use sqlx::pool::PoolConnection;
-
-use sqlx::{Row, Sqlite};
+use sqlx::{Row, SqliteConnection};
 use uuid::Uuid;
 
 pub struct GetSubsonicAlbumsQuery {
@@ -23,7 +21,7 @@ impl Default for GetSubsonicAlbumsQuery {
 }
 
 pub async fn get_subsonic_albums(
-    conn: &mut PoolConnection<Sqlite>,
+    conn: &mut SqliteConnection,
     query: GetSubsonicAlbumsQuery,
 ) -> AppResult<Vec<SubsonicAlbum>> {
     let where_clause = match query.folder_id {

@@ -1,4 +1,5 @@
 use crate::AppResult;
+use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use lewton::inside_ogg::OggStreamReader;
 use ogg_metadata::{read_format, OggFormat};
 use std::collections::HashMap;
@@ -12,7 +13,7 @@ pub struct SongMetadata {
     pub artist: String,
     pub album: Option<String>,
     pub album_artist: Option<String>,
-    pub date: Option<String>,
+    pub date: Option<DateTime<Utc>>,
     pub track_number: Option<u32>,
     pub disc_number: Option<u32>,
     pub bit_rate: Option<u32>,
@@ -57,6 +58,23 @@ pub fn extract_metadata(
                             None => (None, None),
                         };
 
+                        let date = header
+                            .remove("date")
+                            .map(|s| {
+                                DateTime::parse_from_rfc3339(&s)
+                                    .ok()
+                                    .map(|dt| dt.with_timezone(&Utc))
+                                    .or_else(|| {
+                                        let date = NaiveDate::parse_from_str(&s, "%Y-%m-%d").ok();
+                                        let date = date.map(|d| {
+                                            d.and_time(NaiveTime::default()).and_local_timezone(Utc)
+                                        });
+                                        let date = date.map(|d| d.unwrap());
+                                        date
+                                    })
+                            })
+                            .flatten();
+
                         Ok(Some(SongMetadata {
                             title: header
                                 .remove("title")
@@ -68,7 +86,7 @@ pub fn extract_metadata(
                                 .unwrap_or_else(|| "Unknown artist".to_string()),
                             album: header.remove("album"),
                             album_artist: header.remove("albumartist"),
-                            date: header.remove("date"),
+                            date,
                             track_number: header
                                 .remove("tracknumber")
                                 .map(|s| s.parse())
@@ -98,18 +116,21 @@ pub fn extract_metadata(
 
 #[cfg(test)]
 mod tests {
-    use crate::tasks::extract_metadata::extract_metadata;
+    use super::*;
     use std::io::Cursor;
 
     #[test]
     fn can_extract() {
-        let bytes = include_bytes!("test-data/test.ogg");
+        let bytes = include_bytes!("../../tests/data/Richard Bona/Richard Bona - Ba Senge.ogg");
         let metadata = extract_metadata(None, Cursor::new(bytes)).unwrap().unwrap();
-        assert_eq!(metadata.title, "Title");
-        assert_eq!(metadata.album, Some("Album".to_string()));
-        assert_eq!(metadata.artist, "Artist".to_string());
-        assert_eq!(metadata.album_artist, Some("AlbumArtist".to_string()));
-        assert_eq!(metadata.date, Some("2021-12-02".to_string()));
+        assert_eq!(metadata.title, "Ba Senge");
+        assert_eq!(metadata.album, Some("Tiki".to_string()));
+        assert_eq!(metadata.artist, "Richard Bona".to_string());
+        assert_eq!(metadata.album_artist, Some("Richard Bona".to_string()));
+        assert_eq!(
+            metadata.date.map(|d| d.to_rfc3339()),
+            Some("2021-12-02T00:00:00+00:00".to_string())
+        );
         assert_eq!(metadata.track_number, Some(1));
         assert_eq!(metadata.disc_number, Some(1));
     }

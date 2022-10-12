@@ -1,3 +1,4 @@
+use std::ops::DerefMut;
 use crate::{AppResult, AppState};
 use axum::extract::{Query, State};
 use axum::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
@@ -27,7 +28,7 @@ pub async fn get_cover_art(
             let data: Vec<u8> = row.get("data");
             data
         })
-        .fetch_optional(&mut conn)
+        .fetch_optional( conn.deref_mut())
         .await?;
 
     match data {

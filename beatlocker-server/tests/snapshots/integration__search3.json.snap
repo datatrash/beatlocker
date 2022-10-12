@@ -8,9 +8,9 @@ expression: "res.json::<serde_json::Value>().await"
       "album": [
         {
           "artist": "Alex Gopher",
-          "artistId": "80652c62-53d1-f363-2dcb-4431fb251509",
+          "artistId": "be74adf7-0dfc-e5c6-e19e-0058776e90d1",
           "duration": 12,
-          "id": "60c6dd20-81d8-6ca9-5cdb-e86bebba78de",
+          "id": "832e44af-9d23-c38e-34af-b7f4cf92b096",
           "isDir": true,
           "name": "Motorway (Original Motion Picture Soundtrack)",
           "parent": "00000000-0000-0000-0000-000000000000",
@@ -19,9 +19,9 @@ expression: "res.json::<serde_json::Value>().await"
         },
         {
           "artist": "Richard Bona",
-          "artistId": "e122c66a-a11c-a09c-bebd-f9b5b8d572f5",
+          "artistId": "115dddbd-96dd-09c8-0cb6-c373d5c57ff2",
           "duration": 12,
-          "id": "72474acb-e66b-35e4-dc4a-e823e2cac050",
+          "id": "c9c5e1fd-c67e-a5ae-1af6-8e1bffd27f16",
           "isDir": true,
           "name": "Tiki",
           "parent": "00000000-0000-0000-0000-000000000000",
@@ -32,55 +32,62 @@ expression: "res.json::<serde_json::Value>().await"
       "artist": [
         {
           "albumCount": 1,
-          "id": "80652c62-53d1-f363-2dcb-4431fb251509",
-          "name": "Alex Gopher"
+          "id": "115dddbd-96dd-09c8-0cb6-c373d5c57ff2",
+          "name": "Richard Bona"
+        },
+        {
+          "albumCount": 0,
+          "id": "239bae01-0812-184a-a308-53df04bbd914",
+          "name": "Unknown Artist"
         },
         {
           "albumCount": 1,
-          "id": "e122c66a-a11c-a09c-bebd-f9b5b8d572f5",
-          "name": "Richard Bona"
+          "id": "be74adf7-0dfc-e5c6-e19e-0058776e90d1",
+          "name": "Alex Gopher"
         }
       ],
       "song": [
         {
-          "album": "Motorway (Original Motion Picture Soundtrack)",
-          "albumId": "60c6dd20-81d8-6ca9-5cdb-e86bebba78de",
-          "artist": "Alex Gopher",
-          "artistId": "80652c62-53d1-f363-2dcb-4431fb251509",
+          "album": "Tiki",
+          "albumId": "c9c5e1fd-c67e-a5ae-1af6-8e1bffd27f16",
+          "artist": "Richard Bona",
+          "artistId": "115dddbd-96dd-09c8-0cb6-c373d5c57ff2",
           "bitRate": 160,
           "contentType": "audio/ogg",
           "created": "2020-02-02T00:00:00Z",
           "discNumber": 1,
           "duration": 6,
-          "id": "29f7e2bb-9837-d9de-d071-8b7423b77537",
+          "genre": "Unknown genre",
+          "id": "18395314-6144-a810-a281-7cd2f063fa48",
           "isDir": false,
           "isVideo": false,
-          "parent": "9600e0e0-145e-644d-d38f-e501a6252d79",
-          "size": 105424,
+          "parent": "f68bd7e1-0e30-21db-beea-aad58d2429ca",
+          "size": 105385,
           "suffix": "ogg",
-          "title": "Diamond Dealers",
-          "track": 1,
-          "year": 2012
+          "title": "Akwa Samba Yaya",
+          "track": 2,
+          "year": 2021
         },
         {
-          "album": "Motorway (Original Motion Picture Soundtrack)",
-          "albumId": "60c6dd20-81d8-6ca9-5cdb-e86bebba78de",
-          "artist": "Alex Gopher",
-          "artistId": "80652c62-53d1-f363-2dcb-4431fb251509",
+          "album": "Tiki",
+          "albumId": "c9c5e1fd-c67e-a5ae-1af6-8e1bffd27f16",
+          "artist": "Richard Bona",
+          "artistId": "115dddbd-96dd-09c8-0cb6-c373d5c57ff2",
           "bitRate": 160,
           "contentType": "audio/ogg",
           "created": "2020-02-02T00:00:00Z",
           "discNumber": 1,
           "duration": 6,
-          "id": "38e2c2b6-33ea-29df-c549-5788a16a2c5c",
+          "genre": "Unknown genre",
+          "id": "1568a84c-22cd-2176-ab86-c69194a9de16",
           "isDir": false,
           "isVideo": false,
-          "parent": "694a6eee-8eac-2a60-af58-e96493edafcb",
-          "size": 105419,
+          "parent": "f68bd7e1-0e30-21db-beea-aad58d2429ca",
+          "size": 105378,
           "suffix": "ogg",
-          "title": "Radar Unit",
+          "title": "Ba Senge",
           "track": 1,
-          "year": 2012
+          "year": 2021
         }
       ]
     },

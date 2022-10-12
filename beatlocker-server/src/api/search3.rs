@@ -1,3 +1,4 @@
+use std::ops::DerefMut;
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::api::model::{SubsonicAlbum, SubsonicArtist, SubsonicSong};
 use crate::api::queries::{
@@ -43,7 +44,7 @@ pub async fn search3(
     .await?;
 
     let artists = get_subsonic_artists(
-        &mut conn,
+        conn.deref_mut(),
         GetSubsonicArtistsQuery {
             artist_offset: params.artist_offset.unwrap_or_default(),
             artist_count: params.artist_count.unwrap_or(20),
@@ -53,7 +54,7 @@ pub async fn search3(
     .await?;
 
     let albums = get_subsonic_albums(
-        &mut conn,
+        conn.deref_mut(),
         GetSubsonicAlbumsQuery {
             album_offset: params.album_offset.unwrap_or_default(),
             album_count: params.album_count.unwrap_or(20),

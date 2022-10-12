@@ -1,3 +1,4 @@
+use std::ops::DerefMut;
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::api::model::{SubsonicChild, SubsonicChildDirectory};
 use crate::api::queries::{get_subsonic_songs, GetSubsonicSongsQuery};
@@ -30,7 +31,7 @@ pub async fn get_music_directory(
             let name: String = row.get("name");
             name
         })
-        .fetch_optional(&mut conn)
+        .fetch_optional(conn.deref_mut())
         .await?;
 
     match parent_name {
@@ -49,11 +50,11 @@ pub async fn get_music_directory(
                         ..Default::default()
                     })
                 })
-                .fetch_all(&mut conn)
+                .fetch_all(conn.deref_mut())
                 .await?;
 
             let children = get_subsonic_songs(
-                &mut conn,
+                conn.deref_mut(),
                 GetSubsonicSongsQuery {
                     folder_id: Some(params.id),
                     ..Default::default()

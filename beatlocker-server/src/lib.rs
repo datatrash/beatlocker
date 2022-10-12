@@ -2,16 +2,16 @@
 mod api;
 mod db;
 mod errors;
-mod tasks;
+//mod tasks;
+mod tasks2;
 
 pub use api::*;
 pub use db::DatabaseOptions;
-pub use tasks::TaskMessage;
+pub use tasks2::*;
 
 use crate::db::Db;
 use crate::errors::AppError;
-use crate::tasks::{ImportFolderOptions, ImportMissingCoverArtOptions};
-use axum::http::{HeaderValue, Method};
+use axum::http::{HeaderMap, HeaderValue, Method};
 
 use axum::{routing::get, Router};
 use chrono::{DateTime, Utc};
@@ -25,13 +25,9 @@ use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::mpsc::Sender;
-use tokio::sync::oneshot::Receiver;
-use tokio::time::sleep;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing::level_filters::LevelFilter;
-use tracing::{error, info};
 
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use uuid::Uuid;
@@ -76,6 +72,7 @@ pub struct App {
     pub options: ServerOptions,
     pub app: Router,
     pub state: Arc<AppState>,
+    pub task_manager: Arc<TaskManager>,
 }
 
 #[derive(Clone)]
@@ -86,10 +83,15 @@ pub struct AppState {
 
 impl App {
     pub async fn new(options: ServerOptions) -> AppResult<Self> {
+        musicbrainz_rs::config::set_user_agent(USER_AGENT);
+
         let state = Arc::new(AppState {
             server_version: options.server_version.clone(),
-            db: Arc::new(Db::new(&options.database).await?),
+            db: Arc::new(Db::new(&options.database)?),
         });
+        state.db.migrate().await?;
+
+        let task_manager = Arc::new(TaskManager::new(2)?);
 
         let rest_routes = Router::with_state_arc(state.clone())
             .route("/ping", get(ping))
@@ -121,7 +123,7 @@ impl App {
             .nest("/rest", rest_routes)
             .layer(
                 CorsLayer::new()
-                    .allow_origin("http://nubuntu:4440".parse::<HeaderValue>().unwrap())
+                    .allow_origin("*".parse::<HeaderValue>().unwrap())
                     .allow_methods([Method::GET]),
             )
             .layer(TraceLayer::new_for_http());
@@ -130,89 +132,35 @@ impl App {
             options,
             app,
             state,
+            task_manager,
         })
     }
 
-    pub async fn start_background_tasks(&self) -> AppResult<(Sender<TaskMessage>, Receiver<()>)> {
-        let (outer_tx, done_rx) = tasks::start_task_runner().await?;
-
-        let tx = outer_tx.clone();
-        let state = self.state.clone();
-        let options = self.options.clone();
-        tokio::spawn(async move {
-            info!("Background tasks started");
-            loop {
-                match background_task_runner(tx.clone(), state.clone(), options.clone()).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        error!(?e, "Unrecoverable error during background tasks");
-                        panic!("Unrecoverable error");
-                    }
-                }
-
-                sleep(Duration::from_secs(3600)).await;
-            }
-        });
-
-        Ok((outer_tx, done_rx))
+    pub fn task_state(&self) -> Arc<TaskState> {
+        Arc::new(TaskState {
+            db: self.state.db.clone(),
+            now_provider: self.options.now_provider.clone(),
+            root_path: self.options.path.clone(),
+        })
     }
 
-    pub async fn run_background_tasks_once(&self) -> AppResult<()> {
-        let (tx, done_rx) = tasks::start_task_runner().await?;
-        background_task_runner(tx.clone(), self.state.clone(), self.options.clone()).await?;
-        tx.send(TaskMessage::Shutdown).await?;
-        done_rx.await?;
+    pub async fn import_all_folders(&self) -> AppResult<()> {
+        self.task_manager
+            .send(TaskMessage::ImportFolder {
+                state: self.task_state(),
+                folder: self.options.path.clone(),
+                parent_folder_id: None,
+            })
+            .await?;
         Ok(())
     }
-}
-
-async fn background_task_runner(
-    tx: Sender<TaskMessage>,
-    state: Arc<AppState>,
-    options: ServerOptions,
-) -> AppResult<()> {
-    tx.send(TaskMessage::ImportFolder(
-        state.db.clone(),
-        ImportFolderOptions {
-            root_path: options.path.clone(),
-            now_provider: options.now_provider.clone(),
-            discogs_token: options.discogs_token.clone(),
-        },
-    ))
-    .await?;
-
-    if options.include_cover_art {
-        let import_options = ImportMissingCoverArtOptions {
-            discogs_token: options.discogs_token.clone(),
-        };
-
-        tx.send(TaskMessage::ImportMissingSongCoverArt(
-            state.db.clone(),
-            import_options.clone(),
-        ))
-        .await?;
-
-        tx.send(TaskMessage::ImportMissingAlbumCoverArt(
-            state.db.clone(),
-            import_options.clone(),
-        ))
-        .await?;
-
-        tx.send(TaskMessage::ImportMissingArtistCoverArt(
-            state.db.clone(),
-            import_options.clone(),
-        ))
-        .await?;
-    }
-
-    Ok(())
 }
 
 pub fn enable_default_tracing() {
     let filter = EnvFilter::try_from_env("BL_LOG")
         .unwrap_or_else(|_| EnvFilter::from_default_env())
         .add_directive(LevelFilter::WARN.into())
-        .add_directive("beatlocker_server=debug".parse().unwrap());
+        .add_directive("beatlocker_server=info".parse().unwrap());
 
     let subscriber = FmtSubscriber::builder().with_env_filter(filter).finish();
 
@@ -224,4 +172,21 @@ pub fn uri_to_uuid(uri: &str) -> Uuid {
     uri.hash(&mut h);
     let result = h.finish128();
     Uuid::from_u64_pair(result.h1, result.h2)
+}
+
+static REQWEST_CLIENT: once_cell::sync::OnceCell<reqwest::Client> =
+    once_cell::sync::OnceCell::new();
+
+pub fn reqwest_client() -> &'static reqwest::Client {
+    REQWEST_CLIENT.get_or_init(|| {
+        let mut headers = HeaderMap::new();
+        headers.insert("User-Agent", USER_AGENT.parse().unwrap());
+
+        reqwest::Client::builder()
+            .timeout(Duration::from_secs(5))
+            .connect_timeout(Duration::from_secs(5))
+            .default_headers(headers)
+            .build()
+            .unwrap()
+    })
 }

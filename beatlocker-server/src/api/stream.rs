@@ -1,3 +1,4 @@
+use std::ops::DerefMut;
 use crate::api::format::SubsonicFormat;
 use crate::{AppResult, AppState};
 
@@ -31,7 +32,7 @@ pub async fn stream(
             let path: String = row.get("path");
             path
         })
-        .fetch_optional(&mut conn)
+        .fetch_optional(conn.deref_mut())
         .await?;
 
     match path {

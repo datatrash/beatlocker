@@ -1,9 +1,7 @@
 use crate::api::model::SubsonicArtist;
 use crate::AppResult;
 
-use sqlx::pool::PoolConnection;
-
-use sqlx::{Row, Sqlite};
+use sqlx::{Row, SqliteConnection};
 use uuid::Uuid;
 
 pub struct GetSubsonicArtistsQuery {
@@ -23,7 +21,7 @@ impl Default for GetSubsonicArtistsQuery {
 }
 
 pub async fn get_subsonic_artists(
-    conn: &mut PoolConnection<Sqlite>,
+    conn: &mut SqliteConnection,
     query: GetSubsonicArtistsQuery,
 ) -> AppResult<Vec<SubsonicArtist>> {
     let where_clause = match query.folder_id {
@@ -31,7 +29,7 @@ pub async fn get_subsonic_artists(
         None => "",
     };
     let sql = format!(
-        r#"SELECT *, COUNT(aa.album_id) as album_count FROM artists
+        r#"SELECT artists.*, COUNT(aa.album_id) as album_count FROM artists
         LEFT JOIN album_artists aa on artists.artist_id = aa.artist_id
         {}
         GROUP BY 1

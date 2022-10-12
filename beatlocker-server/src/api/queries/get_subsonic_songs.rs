@@ -1,9 +1,8 @@
 use crate::api::model::SubsonicSong;
 use crate::AppResult;
-use chrono::{DateTime, Datelike, NaiveDateTime, Utc};
-use sqlx::pool::PoolConnection;
+use chrono::{Datelike, NaiveDateTime};
 
-use sqlx::{Row, Sqlite};
+use sqlx::{Row, SqliteConnection};
 
 use uuid::Uuid;
 
@@ -24,7 +23,7 @@ impl Default for GetSubsonicSongsQuery {
 }
 
 pub async fn get_subsonic_songs(
-    conn: &mut PoolConnection<Sqlite>,
+    conn: &mut SqliteConnection,
     query: GetSubsonicSongsQuery,
 ) -> AppResult<Vec<SubsonicSong>> {
     let where_clause = match query.folder_id {
@@ -37,7 +36,7 @@ pub async fn get_subsonic_songs(
         LEFT JOIN artists ar ON ar.artist_id = s.artist_id
         LEFT JOIN albums al ON al.album_id = s.album_id
         {}
-        ORDER BY folder_child_id LIMIT ?, ?
+        ORDER BY s.title LIMIT ?, ?
         "#,
         where_clause
     );
@@ -53,8 +52,8 @@ pub async fn get_subsonic_songs(
         .map(|row| {
             let id: Uuid = row.get("folder_child_id");
             let folder_id: Uuid = row.get("folder_id");
-            let _created: DateTime<Utc> = row.get("created");
             let date: Option<NaiveDateTime> = row.get("date");
+            let genre: Option<String> = row.get("genre");
             SubsonicSong {
                 id,
                 is_dir: false,
@@ -74,7 +73,7 @@ pub async fn get_subsonic_songs(
                 duration: row.get("duration"),
                 bit_rate: row.get("bit_rate"),
                 year: date.map(|d| d.year() as u32),
-                genre: row.get("genre"),
+                genre: Some(genre.unwrap_or_else(|| "Unknown genre".to_string())),
                 ..Default::default()
             }
         })

@@ -8,9 +8,9 @@ expression: "res.json::<serde_json::Value>().await"
       "albums": [
         {
           "artist": "Alex Gopher",
-          "artistId": "80652c62-53d1-f363-2dcb-4431fb251509",
+          "artistId": "be74adf7-0dfc-e5c6-e19e-0058776e90d1",
           "duration": 12,
-          "id": "60c6dd20-81d8-6ca9-5cdb-e86bebba78de",
+          "id": "832e44af-9d23-c38e-34af-b7f4cf92b096",
           "isDir": true,
           "name": "Motorway (Original Motion Picture Soundtrack)",
           "parent": "00000000-0000-0000-0000-000000000000",
@@ -19,9 +19,9 @@ expression: "res.json::<serde_json::Value>().await"
         },
         {
           "artist": "Richard Bona",
-          "artistId": "e122c66a-a11c-a09c-bebd-f9b5b8d572f5",
+          "artistId": "115dddbd-96dd-09c8-0cb6-c373d5c57ff2",
           "duration": 12,
-          "id": "72474acb-e66b-35e4-dc4a-e823e2cac050",
+          "id": "c9c5e1fd-c67e-a5ae-1af6-8e1bffd27f16",
           "isDir": true,
           "name": "Tiki",
           "parent": "00000000-0000-0000-0000-000000000000",

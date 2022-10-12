@@ -10,5 +10,8 @@ expression: res.xml_string().await
     <index name="R">
       <artist id="f68bd7e1-0e30-21db-beea-aad58d2429ca" name="Richard Bona" albumCount="1"/>
     </index>
+    <index name="U">
+      <artist id="26a804ae-5598-c3c8-c072-48cc0e6ff0ea" name="Unknown" albumCount="1"/>
+    </index>
   </indexes>
 </subsonic-response>

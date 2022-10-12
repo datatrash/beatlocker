@@ -26,6 +26,16 @@ expression: "res.json::<serde_json::Value>().await"
             }
           ],
           "name": "R"
+        },
+        {
+          "artist": [
+            {
+              "albumCount": 1,
+              "id": "26a804ae-5598-c3c8-c072-48cc0e6ff0ea",
+              "name": "Unknown"
+            }
+          ],
+          "name": "U"
         }
       ]
     },

@@ -1,0 +1,37 @@
+---
+source: beatlocker-server/tests/integration.rs
+expression: "res.json::<serde_json::Value>().await"
+---
+{
+  "subsonic-response": {
+    "ignoredArticles": "The El La Los Las Le Les Os As O A",
+    "indexes": {
+      "index": [
+        {
+          "artist": [
+            {
+              "albumCount": 1,
+              "id": "9600e0e0-145e-644d-d38f-e501a6252d79",
+              "name": "Motorway OST"
+            }
+          ],
+          "name": "M"
+        },
+        {
+          "artist": [
+            {
+              "albumCount": 1,
+              "id": "f68bd7e1-0e30-21db-beea-aad58d2429ca",
+              "name": "Richard Bona"
+            }
+          ],
+          "name": "R"
+        }
+      ]
+    },
+    "serverVersion": "unknown",
+    "status": "ok",
+    "type": "beatlocker",
+    "version": "1.16.1"
+  }
+}

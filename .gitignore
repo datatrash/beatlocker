@@ -1,0 +1,4 @@
+/target
+/misc
+*.bak
+sqlite.db

@@ -1,0 +1,7 @@
+---
+source: beatlocker-server/tests/integration.rs
+expression: res.xml_string().await
+---
+<subsonic-response status="ok" version="1.16.1" type="beatlocker" serverVersion="unknown">
+  <license valid="true"/>
+</subsonic-response>

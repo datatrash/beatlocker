@@ -1,0 +1,14 @@
+---
+source: beatlocker-server/tests/integration.rs
+expression: res.xml_string().await
+---
+<subsonic-response status="ok" version="1.16.1" type="beatlocker" serverVersion="unknown">
+  <indexes ignoredArticles="The El La Los Las Le Les Os As O A">
+    <index name="M">
+      <artist id="9600e0e0-145e-644d-d38f-e501a6252d79" name="Motorway OST" albumCount="1"/>
+    </index>
+    <index name="R">
+      <artist id="f68bd7e1-0e30-21db-beea-aad58d2429ca" name="Richard Bona" albumCount="1"/>
+    </index>
+  </indexes>
+</subsonic-response>

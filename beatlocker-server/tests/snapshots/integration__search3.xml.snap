@@ -1,0 +1,14 @@
+---
+source: beatlocker-server/tests/integration.rs
+expression: res.xml_string().await
+---
+<subsonic-response status="ok" version="1.16.1" type="beatlocker" serverVersion="unknown">
+  <searchResult3>
+    <album id="60c6dd20-81d8-6ca9-5cdb-e86bebba78de" parent="00000000-0000-0000-0000-000000000000" isDir="true" name="Motorway (Original Motion Picture Soundtrack)" title="Motorway (Original Motion Picture Soundtrack)" songCount="2" duration="12" artist="Alex Gopher" artistId="80652c62-53d1-f363-2dcb-4431fb251509"/>
+    <album id="72474acb-e66b-35e4-dc4a-e823e2cac050" parent="00000000-0000-0000-0000-000000000000" isDir="true" name="Tiki" title="Tiki" songCount="2" duration="12" artist="Richard Bona" artistId="e122c66a-a11c-a09c-bebd-f9b5b8d572f5"/>
+    <artist id="80652c62-53d1-f363-2dcb-4431fb251509" name="Alex Gopher" albumCount="1"/>
+    <artist id="e122c66a-a11c-a09c-bebd-f9b5b8d572f5" name="Richard Bona" albumCount="1"/>
+    <song id="29f7e2bb-9837-d9de-d071-8b7423b77537" parent="9600e0e0-145e-644d-d38f-e501a6252d79" isDir="false" created="2020-02-02T00:00:00Z" title="Diamond Dealers" album="Motorway (Original Motion Picture Soundtrack)" artist="Alex Gopher" track="1" year="2012" size="105424" contentType="audio/ogg" suffix="ogg" duration="6" bitRate="160" discNumber="1" albumId="60c6dd20-81d8-6ca9-5cdb-e86bebba78de" artistId="80652c62-53d1-f363-2dcb-4431fb251509" isVideo="false"/>
+    <song id="38e2c2b6-33ea-29df-c549-5788a16a2c5c" parent="694a6eee-8eac-2a60-af58-e96493edafcb" isDir="false" created="2020-02-02T00:00:00Z" title="Radar Unit" album="Motorway (Original Motion Picture Soundtrack)" artist="Alex Gopher" track="1" year="2012" size="105419" contentType="audio/ogg" suffix="ogg" duration="6" bitRate="160" discNumber="1" albumId="60c6dd20-81d8-6ca9-5cdb-e86bebba78de" artistId="80652c62-53d1-f363-2dcb-4431fb251509" isVideo="false"/>
+  </searchResult3>
+</subsonic-response>

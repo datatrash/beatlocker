@@ -1,0 +1,11 @@
+---
+source: beatlocker-server/tests/integration.rs
+expression: res.xml_string().await
+---
+<subsonic-response status="ok" version="1.16.1" type="beatlocker" serverVersion="unknown">
+  <playlists>
+    <playlist id="694a6eee-8eac-2a60-af58-e96493edafcb" name="MotorwayNested" created="2020-02-02T00:00:00Z" public="true" songCount="1" duration="6"/>
+    <playlist id="9600e0e0-145e-644d-d38f-e501a6252d79" name="Motorway OST" created="2020-02-02T00:00:00Z" public="true" songCount="1" duration="6"/>
+    <playlist id="f68bd7e1-0e30-21db-beea-aad58d2429ca" name="Richard Bona" created="2020-02-02T00:00:00Z" public="true" songCount="2" duration="12"/>
+  </playlists>
+</subsonic-response>

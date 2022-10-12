@@ -1,0 +1,92 @@
+---
+source: beatlocker-server/tests/integration.rs
+expression: "res.json::<serde_json::Value>().await"
+---
+{
+  "subsonic-response": {
+    "searchResult3": {
+      "album": [
+        {
+          "artist": "Alex Gopher",
+          "artistId": "80652c62-53d1-f363-2dcb-4431fb251509",
+          "duration": 12,
+          "id": "60c6dd20-81d8-6ca9-5cdb-e86bebba78de",
+          "isDir": true,
+          "name": "Motorway (Original Motion Picture Soundtrack)",
+          "parent": "00000000-0000-0000-0000-000000000000",
+          "songCount": 2,
+          "title": "Motorway (Original Motion Picture Soundtrack)"
+        },
+        {
+          "artist": "Richard Bona",
+          "artistId": "e122c66a-a11c-a09c-bebd-f9b5b8d572f5",
+          "duration": 12,
+          "id": "72474acb-e66b-35e4-dc4a-e823e2cac050",
+          "isDir": true,
+          "name": "Tiki",
+          "parent": "00000000-0000-0000-0000-000000000000",
+          "songCount": 2,
+          "title": "Tiki"
+        }
+      ],
+      "artist": [
+        {
+          "albumCount": 1,
+          "id": "80652c62-53d1-f363-2dcb-4431fb251509",
+          "name": "Alex Gopher"
+        },
+        {
+          "albumCount": 1,
+          "id": "e122c66a-a11c-a09c-bebd-f9b5b8d572f5",
+          "name": "Richard Bona"
+        }
+      ],
+      "song": [
+        {
+          "album": "Motorway (Original Motion Picture Soundtrack)",
+          "albumId": "60c6dd20-81d8-6ca9-5cdb-e86bebba78de",
+          "artist": "Alex Gopher",
+          "artistId": "80652c62-53d1-f363-2dcb-4431fb251509",
+          "bitRate": 160,
+          "contentType": "audio/ogg",
+          "created": "2020-02-02T00:00:00Z",
+          "discNumber": 1,
+          "duration": 6,
+          "id": "29f7e2bb-9837-d9de-d071-8b7423b77537",
+          "isDir": false,
+          "isVideo": false,
+          "parent": "9600e0e0-145e-644d-d38f-e501a6252d79",
+          "size": 105424,
+          "suffix": "ogg",
+          "title": "Diamond Dealers",
+          "track": 1,
+          "year": 2012
+        },
+        {
+          "album": "Motorway (Original Motion Picture Soundtrack)",
+          "albumId": "60c6dd20-81d8-6ca9-5cdb-e86bebba78de",
+          "artist": "Alex Gopher",
+          "artistId": "80652c62-53d1-f363-2dcb-4431fb251509",
+          "bitRate": 160,
+          "contentType": "audio/ogg",
+          "created": "2020-02-02T00:00:00Z",
+          "discNumber": 1,
+          "duration": 6,
+          "id": "38e2c2b6-33ea-29df-c549-5788a16a2c5c",
+          "isDir": false,
+          "isVideo": false,
+          "parent": "694a6eee-8eac-2a60-af58-e96493edafcb",
+          "size": 105419,
+          "suffix": "ogg",
+          "title": "Radar Unit",
+          "track": 1,
+          "year": 2012
+        }
+      ]
+    },
+    "serverVersion": "unknown",
+    "status": "ok",
+    "type": "beatlocker",
+    "version": "1.16.1"
+  }
+}

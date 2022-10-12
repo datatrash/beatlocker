@@ -1,0 +1,6 @@
+---
+source: lucid-server/tests/api.rs
+assertion_line: 18
+expression: res.xml_string().await
+---
+<subsonic-response status="ok" version="1.16.1"/>

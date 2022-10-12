@@ -1,0 +1,45 @@
+[package]
+name = "beatlocker-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+async-recursion = "1"
+axum = { git = "https://github.com/tokio-rs/axum.git" }
+axum-extra = { git = "https://github.com/tokio-rs/axum.git", features = ["async-read-body"] }
+chrono = { version = "0.4", features = ["clock", "serde"] }
+clap = { version = "4", features = ["derive", "env"] }
+const_format = "0.2"
+distance = "0.4"
+git-version = "0.3"
+itertools = "0.10"
+lewton = "0.10"
+musicbrainz_rs = { git = "https://github.com/oknozor/musicbrainz_rs.git" }
+ogg_metadata = "0.4"
+quick-xml = { version = "0.25", features = ["serialize"] }
+reqwest = { version = "0.11.11", default-features = false, features = ["json", "stream", "multipart"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+siphasher = "0.3"
+sqlx = { version = "0.6", features = [ "chrono", "migrate", "runtime-tokio-rustls", "sqlite", "uuid" ] }
+tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
+tower-http = { version = "0.3", features = ["cors", "trace"] }
+tower-service = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+bytes = "1.2"
+hyper = "0.14.20"
+insta = { version = "1.21", features = ["json"] }
+tower = "0.4.13"
+
+[dependencies.uuid]
+version = "1.1.2"
+features = [
+    "v4",
+    "fast-rng",
+    "serde"
+]

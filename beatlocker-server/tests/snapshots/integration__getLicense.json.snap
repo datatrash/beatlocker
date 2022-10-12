@@ -1,0 +1,15 @@
+---
+source: beatlocker-server/tests/integration.rs
+expression: "res.json::<serde_json::Value>().await"
+---
+{
+  "subsonic-response": {
+    "license": {
+      "valid": true
+    },
+    "serverVersion": "unknown",
+    "status": "ok",
+    "type": "beatlocker",
+    "version": "1.16.1"
+  }
+}

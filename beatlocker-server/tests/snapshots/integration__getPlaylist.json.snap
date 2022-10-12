@@ -1,0 +1,42 @@
+---
+source: beatlocker-server/tests/integration.rs
+expression: "res.json::<serde_json::Value>().await"
+---
+{
+  "subsonic-response": {
+    "playlist": {
+      "created": "2020-02-02T00:00:00Z",
+      "duration": 6,
+      "entry": [
+        {
+          "album": "Motorway (Original Motion Picture Soundtrack)",
+          "albumId": "60c6dd20-81d8-6ca9-5cdb-e86bebba78de",
+          "artist": "Alex Gopher",
+          "artistId": "80652c62-53d1-f363-2dcb-4431fb251509",
+          "bitRate": 160,
+          "contentType": "audio/ogg",
+          "created": "2020-02-02T00:00:00Z",
+          "discNumber": 1,
+          "duration": 6,
+          "id": "29f7e2bb-9837-d9de-d071-8b7423b77537",
+          "isDir": false,
+          "isVideo": false,
+          "parent": "9600e0e0-145e-644d-d38f-e501a6252d79",
+          "size": 105424,
+          "suffix": "ogg",
+          "title": "Diamond Dealers",
+          "track": 1,
+          "year": 2012
+        }
+      ],
+      "id": "9600e0e0-145e-644d-d38f-e501a6252d79",
+      "name": "Motorway OST",
+      "public": true,
+      "songCount": 1
+    },
+    "serverVersion": "unknown",
+    "status": "ok",
+    "type": "beatlocker",
+    "version": "1.16.1"
+  }
+}

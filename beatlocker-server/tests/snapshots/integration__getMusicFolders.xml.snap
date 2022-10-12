@@ -1,0 +1,9 @@
+---
+source: beatlocker-server/tests/integration.rs
+expression: res.xml_string().await
+---
+<subsonic-response status="ok" version="1.16.1" type="beatlocker" serverVersion="unknown">
+  <musicFolders>
+    <musicFolder id="00000000-0000-0000-0000-000000000000" name="Music"/>
+  </musicFolders>
+</subsonic-response>

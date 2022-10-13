@@ -201,15 +201,19 @@ mod tests {
 
     #[test]
     fn can_spawn_task_and_shutdown() -> AppResult<()> {
+        println!("New manager...");
         let mgr = TaskManager::new(1)?;
 
-        let rt = runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()?;
+        println!("New rt...");
+        let rt = runtime::Builder::new_multi_thread().enable_all().build()?;
+        println!("rt block on...");
         rt.block_on(async {
+            println!("Sending...");
             let reply = mgr.send(TaskMessage::Ping).await.unwrap();
             assert_eq!(reply, TaskReply::Pong);
+            println!("Trying to shutdown...");
             mgr.shutdown().await.unwrap();
+            println!("Trying to shutdown...OK");
         });
 
         Ok(())

@@ -1,4 +1,4 @@
 /target
 /misc
 *.bak
-sqlite.db
+sqlite.db*

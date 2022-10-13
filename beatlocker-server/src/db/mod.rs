@@ -10,7 +10,7 @@ use crate::AppResult;
 use chrono::Duration;
 use db_pool::DbPool;
 use deadpool::managed::{Object, Pool};
-use sqlx::sqlite::{SqliteConnectOptions, SqliteRow, SqliteSynchronous};
+use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteRow, SqliteSynchronous};
 use sqlx::types::Uuid;
 use sqlx::Row;
 use std::str::FromStr;
@@ -47,6 +47,8 @@ impl Db {
                 )
                 .create_if_missing(true)
                 .synchronous(SqliteSynchronous::Normal)
+                .journal_mode(SqliteJournalMode::Wal)
+                .busy_timeout(std::time::Duration::from_secs(30))
         };
         let mgr = DbPool::new(connect_options);
         let pool: Pool<DbPool> = Pool::builder(mgr).build()?;

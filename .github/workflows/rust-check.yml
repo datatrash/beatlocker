@@ -31,9 +31,9 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
-      - name: Lint
-        run: |
-          cargo fmt --all -- --check
-          cargo clippy --all-features
+      #- name: Lint
+      #  run: |
+      #    cargo fmt --all -- --check
+      #    cargo clippy --all-features
       - name: Test
         run: cargo test

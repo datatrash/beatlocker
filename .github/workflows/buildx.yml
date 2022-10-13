@@ -104,6 +104,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ inputs.image }}:buildcache
           cache-to: type=registry,ref=${{ inputs.image }}:buildcache,mode=max
+          build-args: |
+            BUILDKIT_CONTEXT_KEEP_GIT_DIR=true
       - name: Build and push image with build args ${{ inputs.build-args }} to container registry using registry cache
         uses: docker/build-push-action@v3.2.0
         if: ${{ inputs.cache-type == 'registry' && inputs.build-args != '' }}

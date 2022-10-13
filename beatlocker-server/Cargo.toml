@@ -31,7 +31,6 @@ serde_json = "1"
 siphasher = "0.3"
 sqlx = { version = "0.6", features = [ "chrono", "migrate", "runtime-tokio-rustls", "sqlite", "uuid" ] }
 task-local-extensions = "0.1"
-thread-priority = "0.9"
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"
 tokio-util = "0.7"

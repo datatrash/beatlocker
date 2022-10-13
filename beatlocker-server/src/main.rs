@@ -15,15 +15,15 @@ use tracing::info;
 )]
 struct Cli {
     /// Path to audio library
-    #[arg(long)]
+    #[arg(long, env = "BL_LIBRARY_PATH")]
     library_path: String,
 
     /// Path to a data folder Beatlocker may use
-    #[arg(long, default_value = ".")]
+    #[arg(long, default_value = ".", env = "BL_DATA_PATH")]
     data_path: String,
 
     /// Discogs API token
-    #[arg(long, env = "DISCOGS_TOKEN")]
+    #[arg(long, env = "BL_DISCOGS_TOKEN")]
     discogs_token: Option<String>,
 
     /// Run fully in-memory (no SQLite database will be created)
@@ -31,11 +31,11 @@ struct Cli {
     run_in_memory: bool,
 
     /// Username to use for authentication
-    #[arg(long, requires = "auth_password")]
+    #[arg(long, requires = "auth_password", env = "BL_AUTH_USER")]
     auth_user: Option<String>,
 
     /// Password to use for authentication
-    #[arg(long, requires = "auth_user")]
+    #[arg(long, requires = "auth_user", env = "BL_AUTH_PASSWORD")]
     auth_password: Option<String>,
 }
 

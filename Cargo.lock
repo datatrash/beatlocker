@@ -216,7 +216,6 @@ dependencies = [
  "siphasher",
  "sqlx",
  "task-local-extensions",
- "thread-priority",
  "tokio",
  "tokio-stream",
  "tokio-util",
@@ -2101,18 +2100,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "thread-priority"
-version = "0.9.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a8a950b52fd40d98ac6ed41c7fa9e8dd62b131f48b74f418e810476b01a7460"
-dependencies = [
- "cfg-if",
- "libc",
- "log",
- "winapi",
 ]
 
 [[package]]

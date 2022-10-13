@@ -11,7 +11,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
-use thread_priority::{set_current_thread_priority, ThreadPriority};
 use tokio::sync::{mpsc, oneshot, Barrier};
 use tokio::task::JoinSet;
 use tokio::{runtime, task};
@@ -82,8 +81,6 @@ impl TaskManager {
                 .worker_threads(num_threads)
                 .on_thread_start(move || {
                     debug!("Started worker thread");
-                    /*set_current_thread_priority(ThreadPriority::Min)
-                    .expect("Could not set task thread priority")*/
                 })
                 .on_thread_stop(move || debug!("Stopped worker thread"))
                 .build()

@@ -13,6 +13,7 @@ jobs:
     needs: check
     with:
       image: datatrash/beatlocker-server
+      platforms: linux/amd64
     secrets:
       container-registry-username: ${{ secrets.REGISTRY_USERNAME }}
       container-registry-password: ${{ secrets.REGISTRY_PASSWORD }}

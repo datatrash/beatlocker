@@ -7,6 +7,7 @@ use std::ops::DerefMut;
 use std::path::PathBuf;
 
 use crate::AppResult;
+use chrono::Duration;
 use db_pool::DbPool;
 use deadpool::managed::{Object, Pool};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteRow, SqliteSynchronous};
@@ -121,6 +122,66 @@ impl Db {
         .await?;
 
         Ok(())
+    }
+
+    pub async fn find_song_by_id(&self, id: Uuid) -> AppResult<Option<DbSong>> {
+        let result = sqlx::query("SELECT * FROM songs WHERE song_id = ?")
+            .bind(id)
+            .map(|row: SqliteRow| {
+                let duration: Option<u32> = row.get("duration");
+                DbSong {
+                    song_id: row.get("song_id"),
+                    uri: row.get("uri"),
+                    title: row.get("title"),
+                    created: row.get("created"),
+                    date: row.get("date"),
+                    cover_art_id: row.get("cover_art_id"),
+                    artist_id: row.get("artist_id"),
+                    album_id: row.get("album_id"),
+                    content_type: row.get("content_type"),
+                    suffix: row.get("suffix"),
+                    size: row.get("size"),
+                    track_number: row.get("track_number"),
+                    disc_number: row.get("disc_number"),
+                    duration: duration.map(|secs| Duration::seconds(secs as i64)),
+                    bit_rate: row.get("bit_rate"),
+                    genre: row.get("genre"),
+                }
+            })
+            .fetch_optional(self.conn().await?.deref_mut())
+            .await?;
+
+        Ok(result)
+    }
+
+    pub async fn find_artist_by_id(&self, id: Uuid) -> AppResult<Option<DbArtist>> {
+        let result = sqlx::query("SELECT * FROM artists WHERE artist_id = ?")
+            .bind(id)
+            .map(|row: SqliteRow| DbArtist {
+                artist_id: row.get("artist_id"),
+                uri: row.get("uri"),
+                name: row.get("name"),
+                cover_art_id: row.get("cover_art_id"),
+            })
+            .fetch_optional(self.conn().await?.deref_mut())
+            .await?;
+
+        Ok(result)
+    }
+
+    pub async fn find_album_by_id(&self, id: Uuid) -> AppResult<Option<DbAlbum>> {
+        let result = sqlx::query("SELECT * FROM albums WHERE album_id = ?")
+            .bind(id)
+            .map(|row: SqliteRow| DbAlbum {
+                album_id: row.get("album_id"),
+                uri: row.get("uri"),
+                title: row.get("title"),
+                cover_art_id: row.get("cover_art_id"),
+            })
+            .fetch_optional(self.conn().await?.deref_mut())
+            .await?;
+
+        Ok(result)
     }
 
     pub async fn find_folder_by_uri(&self, uri: &str) -> AppResult<Option<Uuid>> {

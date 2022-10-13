@@ -2,12 +2,13 @@
 mod api;
 mod db;
 mod errors;
-//mod tasks;
-mod tasks2;
+mod tasks;
+mod utils;
 
 pub use api::*;
 pub use db::DatabaseOptions;
-pub use tasks2::*;
+pub use tasks::*;
+pub use utils::*;
 
 use crate::db::Db;
 use crate::errors::AppError;
@@ -18,19 +19,17 @@ use chrono::{DateTime, Utc};
 use const_format::formatcp;
 use serde::{Deserialize, Serialize};
 
-use siphasher::sip128::{Hasher128, SipHasher};
+use axum::middleware::from_extractor_with_state;
+use reqwest_retry::policies::ExponentialBackoff;
 use std::fmt::{Debug, Formatter};
-use std::hash::Hash;
 use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
-use std::time::Duration;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing::level_filters::LevelFilter;
 
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use uuid::Uuid;
 
 pub const SERVER_VERSION: &str = git_version::git_version!();
 pub const USER_AGENT: &str = formatcp!("beatlocker/{}", SERVER_VERSION);
@@ -40,10 +39,11 @@ pub type AppResult<T> = Result<T, AppError>;
 pub struct ServerOptions {
     pub path: PathBuf,
     pub database: DatabaseOptions,
-    pub include_cover_art: bool,
+    pub import_external_metadata: bool,
     pub server_version: String,
     pub discogs_token: Option<String>,
     pub now_provider: Arc<Box<dyn Fn() -> DateTime<Utc> + Send + Sync>>,
+    pub subsonic_auth: SubsonicAuth,
 }
 
 impl Debug for ServerOptions {
@@ -61,9 +61,10 @@ impl Default for ServerOptions {
                 in_memory: true,
             },
             server_version: "unknown".to_string(),
-            include_cover_art: false,
+            import_external_metadata: false,
             discogs_token: None,
             now_provider: Arc::new(Box::new(Utc::now)),
+            subsonic_auth: SubsonicAuth::None,
         }
     }
 }
@@ -75,6 +76,12 @@ pub struct App {
     pub task_manager: Arc<TaskManager>,
 }
 
+#[derive(Clone, Debug)]
+pub enum SubsonicAuth {
+    None,
+    UsernamePassword { username: String, password: String },
+}
+
 #[derive(Clone)]
 pub struct AppState {
     pub server_version: String,
@@ -83,8 +90,6 @@ pub struct AppState {
 
 impl App {
     pub async fn new(options: ServerOptions) -> AppResult<Self> {
-        musicbrainz_rs::config::set_user_agent(USER_AGENT);
-
         let state = Arc::new(AppState {
             server_version: options.server_version.clone(),
             db: Arc::new(Db::new(&options.database)?),
@@ -117,7 +122,10 @@ impl App {
             .route("/search3", get(search3))
             .route("/search3.view", get(search3))
             .route("/stream", get(stream))
-            .route("/stream.view", get(stream));
+            .route("/stream.view", get(stream))
+            .route_layer(from_extractor_with_state::<RequireAuth, SubsonicAuth>(
+                options.subsonic_auth.clone(),
+            ));
 
         let app = Router::new()
             .nest("/rest", rest_routes)
@@ -138,55 +146,36 @@ impl App {
 
     pub fn task_state(&self) -> Arc<TaskState> {
         Arc::new(TaskState {
+            options: self.options.clone(),
             db: self.state.db.clone(),
-            now_provider: self.options.now_provider.clone(),
-            root_path: self.options.path.clone(),
         })
     }
 
-    pub async fn import_all_folders(&self) -> AppResult<()> {
-        self.task_manager
-            .send(TaskMessage::ImportFolder {
-                state: self.task_state(),
-                folder: self.options.path.clone(),
-                parent_folder_id: None,
-            })
-            .await?;
-        Ok(())
+    pub fn import_all_folders(&self) -> AppResult<TaskMessage> {
+        Ok(TaskMessage::ImportFolder {
+            state: self.task_state(),
+            folder: self.options.path.clone(),
+            parent_folder_id: None,
+        })
+    }
+
+    pub fn import_external_metadata(&self) -> AppResult<TaskMessage> {
+        Ok(TaskMessage::ImportExternalMetadata {
+            state: self.task_state(),
+        })
     }
 }
 
 pub fn enable_default_tracing() {
     let filter = EnvFilter::try_from_env("BL_LOG")
-        .unwrap_or_else(|_| EnvFilter::from_default_env())
+        .unwrap_or_else(|_| EnvFilter::new("beatlocker_server=info"))
         .add_directive(LevelFilter::WARN.into())
-        .add_directive("beatlocker_server=info".parse().unwrap());
+        .add_directive("reqwest_retry=error".parse().unwrap());
 
-    let subscriber = FmtSubscriber::builder().with_env_filter(filter).finish();
+    let subscriber = FmtSubscriber::builder()
+        .with_env_filter(filter)
+        .with_ansi(atty::is(atty::Stream::Stdout))
+        .finish();
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
-}
-
-pub fn uri_to_uuid(uri: &str) -> Uuid {
-    let mut h = SipHasher::new();
-    uri.hash(&mut h);
-    let result = h.finish128();
-    Uuid::from_u64_pair(result.h1, result.h2)
-}
-
-static REQWEST_CLIENT: once_cell::sync::OnceCell<reqwest::Client> =
-    once_cell::sync::OnceCell::new();
-
-pub fn reqwest_client() -> &'static reqwest::Client {
-    REQWEST_CLIENT.get_or_init(|| {
-        let mut headers = HeaderMap::new();
-        headers.insert("User-Agent", USER_AGENT.parse().unwrap());
-
-        reqwest::Client::builder()
-            .timeout(Duration::from_secs(5))
-            .connect_timeout(Duration::from_secs(5))
-            .default_headers(headers)
-            .build()
-            .unwrap()
-    })
 }

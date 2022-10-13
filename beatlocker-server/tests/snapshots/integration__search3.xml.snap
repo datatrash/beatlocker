@@ -4,12 +4,12 @@ expression: res.xml_string().await
 ---
 <subsonic-response status="ok" version="1.16.1" type="beatlocker" serverVersion="unknown">
   <searchResult3>
-    <album id="832e44af-9d23-c38e-34af-b7f4cf92b096" parent="00000000-0000-0000-0000-000000000000" isDir="true" name="Motorway (Original Motion Picture Soundtrack)" title="Motorway (Original Motion Picture Soundtrack)" songCount="2" duration="12" artist="Alex Gopher" artistId="be74adf7-0dfc-e5c6-e19e-0058776e90d1"/>
-    <album id="c9c5e1fd-c67e-a5ae-1af6-8e1bffd27f16" parent="00000000-0000-0000-0000-000000000000" isDir="true" name="Tiki" title="Tiki" songCount="2" duration="12" artist="Richard Bona" artistId="115dddbd-96dd-09c8-0cb6-c373d5c57ff2"/>
-    <artist id="115dddbd-96dd-09c8-0cb6-c373d5c57ff2" name="Richard Bona" albumCount="1"/>
-    <artist id="239bae01-0812-184a-a308-53df04bbd914" name="Unknown Artist" albumCount="0"/>
-    <artist id="be74adf7-0dfc-e5c6-e19e-0058776e90d1" name="Alex Gopher" albumCount="1"/>
-    <song id="18395314-6144-a810-a281-7cd2f063fa48" parent="f68bd7e1-0e30-21db-beea-aad58d2429ca" isDir="false" created="2020-02-02T00:00:00Z" title="Akwa Samba Yaya" album="Tiki" artist="Richard Bona" track="2" year="2021" size="105385" contentType="audio/ogg" suffix="ogg" duration="6" bitRate="160" discNumber="1" albumId="c9c5e1fd-c67e-a5ae-1af6-8e1bffd27f16" artistId="115dddbd-96dd-09c8-0cb6-c373d5c57ff2" isVideo="false" genre="Unknown genre"/>
-    <song id="1568a84c-22cd-2176-ab86-c69194a9de16" parent="f68bd7e1-0e30-21db-beea-aad58d2429ca" isDir="false" created="2020-02-02T00:00:00Z" title="Ba Senge" album="Tiki" artist="Richard Bona" track="1" year="2021" size="105378" contentType="audio/ogg" suffix="ogg" duration="6" bitRate="160" discNumber="1" albumId="c9c5e1fd-c67e-a5ae-1af6-8e1bffd27f16" artistId="115dddbd-96dd-09c8-0cb6-c373d5c57ff2" isVideo="false" genre="Unknown genre"/>
+    <album id="cbe80ce0-eb7e-37f6-a70a-87ab0dec3ac9" parent="00000000-0000-0000-0000-000000000000" isDir="true" name="Motorway (Original Motion Picture Soundtrack)" title="Motorway (Original Motion Picture Soundtrack)" songCount="2" duration="12" artist="Alex Gopher" artistId="c2042f2f-fbda-64e4-ff33-62bad6853d99"/>
+    <album id="fd74105f-d1c1-923a-2924-ad93ebdf69ab" parent="00000000-0000-0000-0000-000000000000" isDir="true" name="Tiki" title="Tiki" songCount="2" duration="12" artist="Richard Bona" artistId="d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf"/>
+    <artist id="a597d760-ecda-330c-8e48-b8a92ba19a25" name="Unknown Artist" albumCount="0"/>
+    <artist id="c2042f2f-fbda-64e4-ff33-62bad6853d99" name="Alex Gopher" albumCount="1"/>
+    <artist id="d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf" name="Richard Bona" albumCount="1"/>
+    <song id="18395314-6144-a810-a281-7cd2f063fa48" parent="f68bd7e1-0e30-21db-beea-aad58d2429ca" isDir="false" created="2020-02-02T00:00:00Z" title="Akwa Samba Yaya" album="Tiki" artist="Richard Bona" track="2" year="2021" size="105385" contentType="audio/ogg" suffix="ogg" duration="6" bitRate="160" discNumber="1" albumId="fd74105f-d1c1-923a-2924-ad93ebdf69ab" artistId="d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf" isVideo="false" genre="Unknown genre"/>
+    <song id="1568a84c-22cd-2176-ab86-c69194a9de16" parent="f68bd7e1-0e30-21db-beea-aad58d2429ca" isDir="false" created="2020-02-02T00:00:00Z" title="Ba Senge" album="Tiki" artist="Richard Bona" track="1" year="2021" size="105378" contentType="audio/ogg" suffix="ogg" duration="6" bitRate="160" discNumber="1" albumId="fd74105f-d1c1-923a-2924-ad93ebdf69ab" artistId="d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf" isVideo="false" genre="Unknown genre"/>
   </searchResult3>
 </subsonic-response>

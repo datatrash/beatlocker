@@ -1,5 +1,5 @@
 use beatlocker_server::{
-    enable_default_tracing, App, AppResult, DatabaseOptions, ServerOptions, TaskMessage,
+    enable_default_tracing, App, AppResult, DatabaseOptions, ServerOptions, SubsonicAuth,
     SERVER_VERSION,
 };
 use clap::Parser;
@@ -11,24 +11,32 @@ use tracing::info;
 #[clap(
     name = "Beatlocker",
     author = "datatrash",
-    version = SERVER_VERSION
+    version = SERVER_VERSION,
 )]
 struct Cli {
     /// Path to audio library
-    #[clap(long)]
+    #[arg(long)]
     library_path: String,
 
     /// Path to a data folder Beatlocker may use
-    #[clap(long, default_value = ".")]
+    #[arg(long, default_value = ".")]
     data_path: String,
 
     /// Discogs API token
-    #[clap(long, env = "DISCOGS_TOKEN")]
+    #[arg(long, env = "DISCOGS_TOKEN")]
     discogs_token: Option<String>,
 
     /// Run fully in-memory (no SQLite database will be created)
-    #[clap(long)]
+    #[arg(long)]
     run_in_memory: bool,
+
+    /// Username to use for authentication
+    #[arg(long, requires = "auth_password")]
+    auth_user: Option<String>,
+
+    /// Password to use for authentication
+    #[arg(long, requires = "auth_user")]
+    auth_password: Option<String>,
 }
 
 #[tokio::main]
@@ -40,6 +48,11 @@ async fn main() -> AppResult<()> {
     info!("beatlocker {}", SERVER_VERSION);
     info!("Server starting...");
 
+    let subsonic_auth = match (cli.auth_user, cli.auth_password) {
+        (Some(username), Some(password)) => SubsonicAuth::UsernamePassword { username, password },
+        _ => SubsonicAuth::None,
+    };
+
     let options = ServerOptions {
         path: PathBuf::from(cli.library_path),
         database: DatabaseOptions {
@@ -47,8 +60,9 @@ async fn main() -> AppResult<()> {
             in_memory: cli.run_in_memory,
         },
         server_version: SERVER_VERSION.to_string(),
-        include_cover_art: true,
+        import_external_metadata: true,
         discogs_token: cli.discogs_token,
+        subsonic_auth,
         ..Default::default()
     };
     let app = App::new(options).await?;
@@ -59,12 +73,17 @@ async fn main() -> AppResult<()> {
     info!("Server started");
 
     let mgr = app.task_manager.clone();
-    let msg = TaskMessage::ImportFolder {
-        state: app.task_state(),
-        folder: app.options.path.clone(),
-        parent_folder_id: None,
-    };
-    let join = task::spawn(async move { mgr.send(msg).await });
+    let tasks = vec![app.import_all_folders()?, app.import_external_metadata()?];
+    let join = task::spawn(async move {
+        for task in tasks {
+            match mgr.send(task).await {
+                Ok(_) => (),
+                Err(_) => {
+                    // Channel got shut down
+                }
+            }
+        }
+    });
 
     server.await?;
 

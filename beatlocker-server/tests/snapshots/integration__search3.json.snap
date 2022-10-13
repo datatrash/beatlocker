@@ -8,9 +8,9 @@ expression: "res.json::<serde_json::Value>().await"
       "album": [
         {
           "artist": "Alex Gopher",
-          "artistId": "be74adf7-0dfc-e5c6-e19e-0058776e90d1",
+          "artistId": "c2042f2f-fbda-64e4-ff33-62bad6853d99",
           "duration": 12,
-          "id": "832e44af-9d23-c38e-34af-b7f4cf92b096",
+          "id": "cbe80ce0-eb7e-37f6-a70a-87ab0dec3ac9",
           "isDir": true,
           "name": "Motorway (Original Motion Picture Soundtrack)",
           "parent": "00000000-0000-0000-0000-000000000000",
@@ -19,9 +19,9 @@ expression: "res.json::<serde_json::Value>().await"
         },
         {
           "artist": "Richard Bona",
-          "artistId": "115dddbd-96dd-09c8-0cb6-c373d5c57ff2",
+          "artistId": "d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf",
           "duration": 12,
-          "id": "c9c5e1fd-c67e-a5ae-1af6-8e1bffd27f16",
+          "id": "fd74105f-d1c1-923a-2924-ad93ebdf69ab",
           "isDir": true,
           "name": "Tiki",
           "parent": "00000000-0000-0000-0000-000000000000",
@@ -31,27 +31,27 @@ expression: "res.json::<serde_json::Value>().await"
       ],
       "artist": [
         {
-          "albumCount": 1,
-          "id": "115dddbd-96dd-09c8-0cb6-c373d5c57ff2",
-          "name": "Richard Bona"
-        },
-        {
           "albumCount": 0,
-          "id": "239bae01-0812-184a-a308-53df04bbd914",
+          "id": "a597d760-ecda-330c-8e48-b8a92ba19a25",
           "name": "Unknown Artist"
         },
         {
           "albumCount": 1,
-          "id": "be74adf7-0dfc-e5c6-e19e-0058776e90d1",
+          "id": "c2042f2f-fbda-64e4-ff33-62bad6853d99",
           "name": "Alex Gopher"
+        },
+        {
+          "albumCount": 1,
+          "id": "d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf",
+          "name": "Richard Bona"
         }
       ],
       "song": [
         {
           "album": "Tiki",
-          "albumId": "c9c5e1fd-c67e-a5ae-1af6-8e1bffd27f16",
+          "albumId": "fd74105f-d1c1-923a-2924-ad93ebdf69ab",
           "artist": "Richard Bona",
-          "artistId": "115dddbd-96dd-09c8-0cb6-c373d5c57ff2",
+          "artistId": "d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf",
           "bitRate": 160,
           "contentType": "audio/ogg",
           "created": "2020-02-02T00:00:00Z",
@@ -70,9 +70,9 @@ expression: "res.json::<serde_json::Value>().await"
         },
         {
           "album": "Tiki",
-          "albumId": "c9c5e1fd-c67e-a5ae-1af6-8e1bffd27f16",
+          "albumId": "fd74105f-d1c1-923a-2924-ad93ebdf69ab",
           "artist": "Richard Bona",
-          "artistId": "115dddbd-96dd-09c8-0cb6-c373d5c57ff2",
+          "artistId": "d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf",
           "bitRate": 160,
           "contentType": "audio/ogg",
           "created": "2020-02-02T00:00:00Z",

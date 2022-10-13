@@ -24,10 +24,10 @@ async fn integration_test() -> AppResult<()> {
         })),
         ..Default::default()
     };
-    let server = App::new(options).await?;
-    let client = TestClient::new(server.app.clone());
+    let app = App::new(options).await?;
+    let client = TestClient::new(app.app.clone());
 
-    server.import_all_folders().await?;
+    app.task_manager.send(app.import_all_folders()?).await?;
 
     let res = client.get("/rest/ping?f=json").send().await;
     assert_eq!(res.status(), StatusCode::OK);

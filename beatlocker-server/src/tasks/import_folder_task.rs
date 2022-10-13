@@ -1,7 +1,6 @@
 use super::*;
 use crate::db::{DbAlbum, DbArtist, DbFolder, DbFolderChild, DbSong};
-use crate::tasks2::extract_metadata::extract_metadata;
-use crate::tasks2::providers::{ProviderUri, Release};
+use crate::tasks::extract_metadata::extract_metadata;
 use crate::uri_to_uuid;
 use async_recursion::async_recursion;
 use std::path::Path;
@@ -27,14 +26,14 @@ pub async fn import_folder(
                     uri: "root".to_owned(),
                     name: "root".to_owned(),
                     cover_art_id: None,
-                    created: (state.now_provider)(),
+                    created: (state.options.now_provider)(),
                 })
                 .await?
         }
     };
 
     // Insert folder in DB
-    let folder_id = if folder == state.root_path {
+    let folder_id = if folder == state.options.path {
         Uuid::nil()
     } else {
         let folder_name = folder.file_name().unwrap();
@@ -48,7 +47,7 @@ pub async fn import_folder(
                 uri: folder_uri.clone(),
                 name: folder_name.to_string_lossy().to_string(),
                 cover_art_id: None,
-                created: (state.now_provider)(),
+                created: (state.options.now_provider)(),
             })
             .await?
     };
@@ -117,30 +116,13 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
     }
     let metadata = metadata.unwrap();
 
-    let release = Release {
-        album: metadata
-            .album
-            .map(|a| ((ProviderUri::from_provider("tags", &a), a.to_string()))),
-        album_artist: None,
-        artist: Some((
-            ProviderUri::from_provider("tags", &metadata.artist),
-            metadata.artist,
-        )),
-        song: ((
-            ProviderUri::from_provider("tags", &metadata.title),
-            metadata.title.to_string(),
-        )),
-        genre: None,
-        release_date: metadata.date,
-    };
-
-    let album_id = if let Some((album_uri, album_title)) = &release.album {
+    let album_id = if let Some(album_title) = &metadata.album {
         Some(
             state
                 .db
                 .insert_album_if_not_exists(&DbAlbum {
-                    album_id: uri_to_uuid(album_uri.as_str()),
-                    uri: album_uri.to_string(),
+                    album_id: uri_to_uuid(album_title.as_str()),
+                    uri: album_title.clone(),
                     title: album_title.clone(),
                     cover_art_id: None,
                 })
@@ -150,29 +132,25 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
         None
     };
 
-    let artist_id = if let Some((artist_uri, artist_name)) = &release.artist {
-        Some(
-            state
-                .db
-                .insert_artist_if_not_exists(&DbArtist {
-                    artist_id: uri_to_uuid(artist_uri.as_str()),
-                    uri: artist_uri.to_string(),
-                    name: artist_name.clone(),
-                    cover_art_id: None,
-                })
-                .await?,
-        )
-    } else {
-        None
-    };
+    let artist_id = Some(
+        state
+            .db
+            .insert_artist_if_not_exists(&DbArtist {
+                artist_id: uri_to_uuid(&metadata.artist),
+                uri: metadata.artist.clone(),
+                name: metadata.artist.clone(),
+                cover_art_id: None,
+            })
+            .await?,
+    );
 
-    let album_artist_id = if let Some((artist_uri, artist_name)) = &release.album_artist {
+    let album_artist_id = if let Some(artist_name) = &metadata.album_artist {
         Some(
             state
                 .db
                 .insert_artist_if_not_exists(&DbArtist {
-                    artist_id: uri_to_uuid(artist_uri.as_str()),
-                    uri: artist_uri.to_string(),
+                    artist_id: uri_to_uuid(artist_name.as_str()),
+                    uri: artist_name.to_string(),
                     name: artist_name.clone(),
                     cover_art_id: None,
                 })
@@ -191,7 +169,7 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
         }
     }
 
-    let (song_uri, song_title) = &release.song;
+    let song_title = &metadata.title;
     let suffix = path
         .extension()
         .and_then(|s| s.to_str())
@@ -208,11 +186,11 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
         state
             .db
             .insert_song_if_not_exists(&DbSong {
-                song_id: uri_to_uuid(song_uri.as_str()),
-                uri: song_uri.to_string(),
+                song_id: uri_to_uuid(song_title.as_str()),
+                uri: song_title.to_string(),
                 title: song_title.clone(),
-                created: (state.now_provider)(),
-                date: release.release_date,
+                created: (state.options.now_provider)(),
+                date: metadata.date,
                 cover_art_id: None,
                 artist_id,
                 album_id,
@@ -223,7 +201,7 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
                 disc_number: metadata.disc_number,
                 duration: metadata.duration,
                 bit_rate: metadata.bit_rate,
-                genre: release.genre,
+                genre: metadata.genre,
             })
             .await?,
     );

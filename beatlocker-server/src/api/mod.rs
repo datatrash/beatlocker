@@ -1,3 +1,4 @@
+mod auth;
 mod format;
 mod get_album_list;
 mod get_cover_art;
@@ -13,6 +14,7 @@ mod queries;
 mod search3;
 mod stream;
 
+pub use auth::RequireAuth;
 pub use get_album_list::*;
 pub use get_cover_art::*;
 pub use get_indexes::*;

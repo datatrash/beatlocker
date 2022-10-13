@@ -10,9 +10,9 @@ expression: "res.json::<serde_json::Value>().await"
       "entry": [
         {
           "album": "Motorway (Original Motion Picture Soundtrack)",
-          "albumId": "832e44af-9d23-c38e-34af-b7f4cf92b096",
+          "albumId": "cbe80ce0-eb7e-37f6-a70a-87ab0dec3ac9",
           "artist": "Alex Gopher",
-          "artistId": "be74adf7-0dfc-e5c6-e19e-0058776e90d1",
+          "artistId": "c2042f2f-fbda-64e4-ff33-62bad6853d99",
           "bitRate": 160,
           "contentType": "audio/ogg",
           "created": "2020-02-02T00:00:00Z",

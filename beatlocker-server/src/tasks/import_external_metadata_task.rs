@@ -191,8 +191,7 @@ async fn update_discogs_metadata(
                                 if let Some(image) = images.first() {
                                     if let Some(url) = &image.resource_url {
                                         debug!(info.album_title, "Updating album cover art");
-                                        let cover_art_id =
-                                            insert_cover_art(&state.db, url).await?;
+                                        let cover_art_id = insert_cover_art(&state.db, url).await?;
                                         sqlx::query(
                                             "UPDATE albums SET cover_art_id = ? WHERE album_id = ?",
                                         )

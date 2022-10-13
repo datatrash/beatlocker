@@ -32,9 +32,7 @@ impl FromRequestParts<SubsonicAuth> for RequireAuth {
                     {
                         Some(query) => match (&query.u, &query.p, &query.t, &query.s) {
                             (_, _, Some(t), Some(s)) => check_user(username, password, t, s),
-                            (Some(u), Some(p), _, _) => {
-                                check_legacy_user(username, password, u, p)
-                            }
+                            (Some(u), Some(p), _, _) => check_legacy_user(username, password, u, p),
                             _ => false,
                         },
                         None => false,

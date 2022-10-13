@@ -59,21 +59,19 @@ pub fn extract_metadata(
                             None => (None, None),
                         };
 
-                        let date = header
-                            .remove("date")
-                            .and_then(|s| {
-                                DateTime::parse_from_rfc3339(&s)
-                                    .ok()
-                                    .map(|dt| dt.with_timezone(&Utc))
-                                    .or_else(|| {
-                                        let date = NaiveDate::parse_from_str(&s, "%Y-%m-%d").ok();
-                                        let date = date.map(|d| {
-                                            d.and_time(NaiveTime::default()).and_local_timezone(Utc)
-                                        });
-                                        
-                                        date.map(|d| d.unwrap())
-                                    })
-                            });
+                        let date = header.remove("date").and_then(|s| {
+                            DateTime::parse_from_rfc3339(&s)
+                                .ok()
+                                .map(|dt| dt.with_timezone(&Utc))
+                                .or_else(|| {
+                                    let date = NaiveDate::parse_from_str(&s, "%Y-%m-%d").ok();
+                                    let date = date.map(|d| {
+                                        d.and_time(NaiveTime::default()).and_local_timezone(Utc)
+                                    });
+
+                                    date.map(|d| d.unwrap())
+                                })
+                        });
 
                         Ok(Some(SongMetadata {
                             title: header

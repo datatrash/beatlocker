@@ -13,13 +13,13 @@ COPY . .
 RUN --mount=type=cache,target=/usr/local/cargo/registry,id=${TARGETPLATFORM} --mount=type=cache,target=/root/target,id=${TARGETPLATFORM} \
     cargo build --release && \
     cargo strip && \
-    mv /root/target/release/beatlocker-server /root
+    mv /root/target/release/beatlocker-server /root/beatlocker
 
 
 FROM gcr.io/distroless/cc-debian11
 
-COPY --from=builder /root/beatlocker-server /
+COPY --from=builder /root/beatlocker /
 
-ENTRYPOINT ["./beatlocker-server"]
+ENTRYPOINT ["./beatlocker"]
 
-EXPOSE 3000
+EXPOSE 2222

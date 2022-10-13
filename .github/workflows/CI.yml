@@ -8,3 +8,11 @@ on:
 jobs:
   check:
     uses: ./.github/workflows/rust-check.yml
+  build:
+    uses: ./.github/workflows/buildx.yml
+    needs: check
+    with:
+      image: datatrash/beatlocker-server
+    secrets:
+      container-registry-username: ${{ secrets.REGISTRY_USERNAME }}
+      container-registry-password: ${{ secrets.REGISTRY_PASSWORD }}

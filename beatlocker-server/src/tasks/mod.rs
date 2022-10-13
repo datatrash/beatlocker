@@ -82,8 +82,8 @@ impl TaskManager {
                 .worker_threads(num_threads)
                 .on_thread_start(move || {
                     debug!("Started worker thread");
-                    set_current_thread_priority(ThreadPriority::Min)
-                        .expect("Could not set task thread priority")
+                    /*set_current_thread_priority(ThreadPriority::Min)
+                    .expect("Could not set task thread priority")*/
                 })
                 .on_thread_stop(move || debug!("Stopped worker thread"))
                 .build()
@@ -201,7 +201,7 @@ mod tests {
 
     #[tokio::test]
     async fn can_spawn_task_and_shutdown() -> AppResult<()> {
-        let mgr = TaskManager::new(1)?;
+        let mgr = TaskManager::new(4)?;
         let reply = mgr.send(TaskMessage::Ping).await.unwrap();
         assert_eq!(reply, TaskReply::Pong);
         mgr.shutdown().await.unwrap();

@@ -1,0 +1,138 @@
+on:
+  workflow_call:
+    inputs:
+      image:
+        type: string
+        required: true
+        description: container image
+      registry:
+        type: string
+        required: false
+        default: ''
+        description: container registry
+      platforms:
+        type: string
+        required: false
+        default: linux/amd64,linux/arm64
+        description: platforms to build images for
+      cache-type:
+        type: string
+        required: false
+        default: registry
+        description: buildx cache type [registry | gha]
+      license:
+        type: string
+        required: false
+        default: MIT
+        description: container image license
+      vendor:
+        type: string
+        required: false
+        default: datatrash
+        description: container image vendor
+      build-args:
+        type: string
+        required: false
+        default: ''
+        description: container image build arguments
+    secrets:
+      container-registry-username:
+        required: true
+        description: username for container registry login
+      container-registry-password:
+        required: true
+        description: password for container registry login
+    outputs:
+      sha-tag:
+        description: image short sha tag
+        value: ${{ jobs.build.outputs.sha-tag }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      sha-tag: ${{ steps.tags.outputs.sha-tag }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2.1.0
+      - name: Set up tags
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ inputs.image }}
+          labels: |
+            org.opencontainers.image.licenses=${{ inputs.license }}
+            org.opencontainers.image.vendor=${{ inputs.vendor }}
+            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/${{ inputs.image }}/main/readme.md
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=edge
+            type=sha
+      - name: Output short tag
+        id: tags
+        run: |
+          echo "::set-output name=sha-tag::sha-$(echo ${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }} | cut -c1-7)"
+      - name: Login to Docker Hub container registry
+        uses: docker/login-action@v2.1.0
+        if: ${{ inputs.registry == ''}}
+        with:
+          username: ${{ secrets.container-registry-username }}
+          password: ${{ secrets.container-registry-password }}
+      - name: Login to ${{ inputs.registry }} container registry
+        uses: docker/login-action@v2.1.0
+        if: ${{ inputs.registry != ''}}
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ secrets.container-registry-username }}
+          password: ${{ secrets.container-registry-password }}
+      - name: Build and push image to container registry using registry cache
+        uses: docker/build-push-action@v3.2.0
+        if: ${{ inputs.cache-type == 'registry' && inputs.build-args == '' }}
+        with:
+          platforms: ${{ inputs.platforms }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ inputs.image }}:buildcache
+          cache-to: type=registry,ref=${{ inputs.image }}:buildcache,mode=max
+      - name: Build and push image with build args ${{ inputs.build-args }} to container registry using registry cache
+        uses: docker/build-push-action@v3.2.0
+        if: ${{ inputs.cache-type == 'registry' && inputs.build-args != '' }}
+        with:
+          build-args: ${{ inputs.build-args }}
+          platforms: ${{ inputs.platforms }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ inputs.image }}:buildcache
+          cache-to: type=registry,ref=${{ inputs.image }}:buildcache,mode=max
+      - name: Build and push image to container registry using gha cache
+        uses: docker/build-push-action@v3.2.0
+        if: ${{ inputs.cache-type == 'gha' && inputs.build-args == '' }}
+        with:
+          platforms: ${{ inputs.platforms }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build and push image with build args ${{ inputs.build-args }} to container registry using gha cache
+        uses: docker/build-push-action@v3.2.0
+        if: ${{ inputs.cache-type == 'gha' && inputs.build-args != '' }}
+        with:
+          build-args: ${{ inputs.build-args }}
+          platforms: ${{ inputs.platforms }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

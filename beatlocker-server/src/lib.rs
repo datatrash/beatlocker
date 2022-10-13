@@ -31,7 +31,7 @@ use tracing::level_filters::LevelFilter;
 
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-pub const SERVER_VERSION: &str = git_version::git_version!();
+pub const SERVER_VERSION: &str = git_version::git_version!(fallback = "unknown");
 pub const USER_AGENT: &str = formatcp!("beatlocker/{}", SERVER_VERSION);
 pub type AppResult<T> = Result<T, AppError>;
 

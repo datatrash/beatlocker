@@ -61,7 +61,7 @@ pub async fn import_folder(
             if file_type.is_dir() {
                 let state = state.clone();
                 let entry = entry.path().clone();
-                let folder_id = folder_id.clone();
+                let folder_id = folder_id;
                 set.spawn(async move {
                     let _ = import_folder(state, entry.as_path(), Some(folder_id)).await;
                     Ok(())
@@ -74,7 +74,7 @@ pub async fn import_folder(
                     .map(|s| s.to_string_lossy().to_lowercase())
                     == Some("ogg".to_string())
             {
-                let folder_id = folder_id.clone();
+                let folder_id = folder_id;
                 let state = state.clone();
                 let entry = entry.path().clone();
                 set.spawn(async move { import_file(state, entry.as_path(), folder_id).await });
@@ -195,7 +195,7 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
                 artist_id,
                 album_id,
                 content_type: content_type.map(|s| s.to_owned()),
-                suffix: suffix.map(|s| s.to_owned()),
+                suffix,
                 size: Some(file_size),
                 track_number: metadata.track_number,
                 disc_number: metadata.disc_number,

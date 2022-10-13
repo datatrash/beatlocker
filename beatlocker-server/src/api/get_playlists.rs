@@ -1,4 +1,3 @@
-use std::ops::DerefMut;
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::{AppResult, AppState, Deserialize, Serialize};
 use axum::extract::State;
@@ -6,6 +5,7 @@ use axum::response::Response;
 use chrono::{DateTime, Utc};
 use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
+use std::ops::DerefMut;
 use uuid::Uuid;
 
 pub async fn get_playlists(
@@ -37,7 +37,7 @@ pub async fn get_playlists(
             cover_art: row.get("cover_art_id"),
         }
     })
-    .fetch_all( conn.deref_mut())
+    .fetch_all(conn.deref_mut())
     .await?;
 
     Ok(format.render(GetPlaylistsResponse {

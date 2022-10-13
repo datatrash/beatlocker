@@ -1,4 +1,3 @@
-use std::ops::DerefMut;
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::{AppResult, AppState};
 use axum::extract::{Query, State};
@@ -8,6 +7,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
+use std::ops::DerefMut;
 
 use uuid::Uuid;
 

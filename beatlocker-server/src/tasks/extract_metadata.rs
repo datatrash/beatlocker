@@ -61,7 +61,7 @@ pub fn extract_metadata(
 
                         let date = header
                             .remove("date")
-                            .map(|s| {
+                            .and_then(|s| {
                                 DateTime::parse_from_rfc3339(&s)
                                     .ok()
                                     .map(|dt| dt.with_timezone(&Utc))
@@ -70,11 +70,10 @@ pub fn extract_metadata(
                                         let date = date.map(|d| {
                                             d.and_time(NaiveTime::default()).and_local_timezone(Utc)
                                         });
-                                        let date = date.map(|d| d.unwrap());
-                                        date
+                                        
+                                        date.map(|d| d.unwrap())
                                     })
-                            })
-                            .flatten();
+                            });
 
                         Ok(Some(SongMetadata {
                             title: header

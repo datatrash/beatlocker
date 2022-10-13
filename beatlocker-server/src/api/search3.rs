@@ -1,4 +1,3 @@
-use std::ops::DerefMut;
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::api::model::{SubsonicAlbum, SubsonicArtist, SubsonicSong};
 use crate::api::queries::{
@@ -10,6 +9,7 @@ use axum::extract::{Query, State};
 use axum::response::Response;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use std::ops::DerefMut;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -1,9 +1,9 @@
-use std::ops::DerefMut;
 use crate::{AppResult, AppState};
 use axum::extract::{Query, State};
 use axum::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use std::ops::DerefMut;
 
 use serde::Deserialize;
 use sqlx::sqlite::SqliteRow;
@@ -28,7 +28,7 @@ pub async fn get_cover_art(
             let data: Vec<u8> = row.get("data");
             data
         })
-        .fetch_optional( conn.deref_mut())
+        .fetch_optional(conn.deref_mut())
         .await?;
 
     match data {

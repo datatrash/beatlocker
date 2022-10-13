@@ -1,7 +1,7 @@
 use deadpool::async_trait;
 use deadpool::managed::{Manager, RecycleResult};
-use sqlx::{Connection, SqliteConnection};
 use sqlx::sqlite::SqliteConnectOptions;
+use sqlx::{Connection, SqliteConnection};
 
 pub struct DbPool {
     connect_options: SqliteConnectOptions,
@@ -9,9 +9,7 @@ pub struct DbPool {
 
 impl DbPool {
     pub fn new(connect_options: SqliteConnectOptions) -> Self {
-        Self {
-            connect_options
-        }
+        Self { connect_options }
     }
 }
 

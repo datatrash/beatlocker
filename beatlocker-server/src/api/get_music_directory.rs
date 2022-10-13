@@ -1,4 +1,3 @@
-use std::ops::DerefMut;
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::api::model::{SubsonicChild, SubsonicChildDirectory};
 use crate::api::queries::{get_subsonic_songs, GetSubsonicSongsQuery};
@@ -10,6 +9,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
+use std::ops::DerefMut;
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]

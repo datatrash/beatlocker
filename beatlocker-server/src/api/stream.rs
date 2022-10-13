@@ -1,6 +1,6 @@
-use std::ops::DerefMut;
 use crate::api::format::SubsonicFormat;
 use crate::{AppResult, AppState};
+use std::ops::DerefMut;
 
 use axum::extract::{Query, State};
 use axum::http::header::{CONTENT_LENGTH, CONTENT_TYPE};

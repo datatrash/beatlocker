@@ -76,19 +76,14 @@ async fn main() -> AppResult<()> {
     let tasks = vec![app.import_all_folders()?, app.import_external_metadata()?];
     let join = task::spawn(async move {
         for task in tasks {
-            match mgr.send(task).await {
-                Ok(_) => (),
-                Err(_) => {
-                    // Channel got shut down
-                }
-            }
+            let _ = mgr.send(task).await;
         }
     });
 
     server.await?;
 
     app.task_manager.shutdown().await?;
-    let _ = join.await?;
+    join.await?;
 
     info!("Server is shutdown");
     Ok(())

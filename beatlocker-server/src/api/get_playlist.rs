@@ -1,4 +1,3 @@
-use std::ops::DerefMut;
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::api::model::SubsonicSong;
 use crate::api::queries::{get_subsonic_songs, GetSubsonicSongsQuery};
@@ -9,6 +8,7 @@ use axum::response::{IntoResponse, Response};
 use chrono::{DateTime, Utc};
 use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
+use std::ops::DerefMut;
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]

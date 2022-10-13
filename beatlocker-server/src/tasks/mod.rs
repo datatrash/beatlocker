@@ -72,9 +72,8 @@ impl TaskManager {
     pub fn new(num_threads: usize) -> AppResult<Self> {
         let (message_tx, mut message_rx) = mpsc::channel::<TaskEnvelope>(32);
         let (shutdown_tx, mut shutdown_rx) = mpsc::channel::<()>(1);
-        let shutdown_barrier = Arc::new(Barrier::new(3));
+        let shutdown_barrier = Arc::new(Barrier::new(2));
 
-        let barrier = shutdown_barrier.clone();
         let thread_barrier = shutdown_barrier.clone();
         let thread = thread::spawn(move || {
             let runtime = runtime::Builder::new_multi_thread()
@@ -98,7 +97,7 @@ impl TaskManager {
                             trace!(?message);
                             match message {
                                 TaskMessage::Ping => {
-                                    let _ = envelope.reply_tx.send(TaskReply::Pong);
+                                    envelope.reply_tx.send(TaskReply::Pong).unwrap();
                                 },
                                 TaskMessage::ImportFolder { state, folder, parent_folder_id } => {
                                     task::spawn(async move {
@@ -120,12 +119,10 @@ impl TaskManager {
                         },
                         Some(_) = shutdown_rx.recv() => {
                             info!("Shutting down background task manager");
-                            barrier.wait().await;
                             break;
                         },
                         else => {
                             // Got shutdown without a message
-                            barrier.wait().await;
                             break;
                         }
                     }

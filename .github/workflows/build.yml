@@ -3,11 +3,12 @@ name: Build Docker image
 on:
   push:
 
-build:
-  uses: ./.github/workflows/build.yml
-  needs: CI
-  with:
-    image: datatrash/beatlocker-server
-  secrets:
-    container-registry-username: ${{ secrets.REGISTRY_USERNAME }}
-    container-registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    needs: CI
+    with:
+      image: datatrash/beatlocker-server
+    secrets:
+      container-registry-username: ${{ secrets.REGISTRY_USERNAME }}
+      container-registry-password: ${{ secrets.REGISTRY_PASSWORD }}

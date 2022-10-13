@@ -7,4 +7,4 @@ on:
 
 jobs:
   check:
-    uses: ./github/workflows/rust-check.yml
+    uses: ./.github/workflows/rust-check.yml

@@ -5,7 +5,7 @@ use siphasher::sip128::{Hasher128, SipHasher};
 use std::future::Future;
 use std::hash::Hash;
 use std::time::Duration;
-use tracing::error;
+use tracing::warn;
 use uuid::Uuid;
 
 mod rate_limiter;
@@ -52,7 +52,7 @@ pub async fn wrap_err<T>(
     match result.await {
         Ok(result) => result,
         Err(e) => {
-            error!(?e, "Error while updating discogs metadata");
+            warn!(?e, "There was an issue during processing");
             fallback()
         }
     }

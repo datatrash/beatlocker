@@ -11,7 +11,6 @@ use reqwest_retry::RetryTransientMiddleware;
 use serde::Deserialize;
 use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
-use std::num::NonZeroU32;
 use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -304,14 +303,15 @@ static DISCOGS_CLIENT: once_cell::sync::OnceCell<ClientWithMiddleware> =
 
 fn discogs_client() -> &'static ClientWithMiddleware {
     DISCOGS_CLIENT.get_or_init(|| {
+        // Allow 1 request every 2 seconds, otherwise we'll get rate limited
+        let quota = Quota::with_period(Duration::from_secs(2)).unwrap();
+
         let retry_policy = ExponentialBackoff::builder()
             .retry_bounds(Duration::from_secs(20), Duration::from_secs(300))
             .build_with_max_retries(3);
         reqwest_client_builder()
             .with(RetryTransientMiddleware::new_with_policy(retry_policy))
-            .with(RateLimiterMiddleware::new(Quota::per_second(
-                NonZeroU32::new(1).unwrap(),
-            )))
+            .with(RateLimiterMiddleware::new(quota))
             .build()
     })
 }

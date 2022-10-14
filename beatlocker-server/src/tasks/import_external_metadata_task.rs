@@ -38,8 +38,12 @@ pub async fn import_external_metadata(state: Arc<TaskState>) -> AppResult<()> {
             FROM songs
             LEFT JOIN albums on albums.album_id = songs.album_id
             LEFT JOIN album_artists aa on albums.album_id = aa.album_id
-            LEFT JOIN artists on aa.artist_id = artists.artist_id
+            LEFT JOIN artists on songs.artist_id = artists.artist_id
             LEFT JOIN folder_children fc on songs.song_id = fc.song_id
+            WHERE songs.cover_art_id is null
+            OR artists.cover_art_id is null
+            OR albums.cover_art_id is null
+            OR songs.genre is null
         "#,
     )
     .map(|row: SqliteRow| {

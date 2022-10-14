@@ -4,7 +4,10 @@ use crate::tasks::extract_metadata::extract_metadata;
 use crate::uri_to_uuid;
 use async_recursion::async_recursion;
 use std::path::Path;
+use std::time::Duration;
 use tokio::task::JoinSet;
+use tokio_stream::wrappers::ReadDirStream;
+use tokio_stream::StreamExt;
 use tracing::{debug, warn};
 
 #[async_recursion]
@@ -52,11 +55,13 @@ pub async fn import_folder(
             .await?
     };
 
-    let mut set = JoinSet::new();
-    let mut read_dir = tokio::fs::read_dir(folder).await?;
-    loop {
-        let entry = read_dir.next_entry().await?;
-        if let Some(entry) = entry {
+    let read_dir_chunks = ReadDirStream::new(tokio::fs::read_dir(folder).await?)
+        .chunks_timeout(64, Duration::from_secs(10));
+    tokio::pin!(read_dir_chunks);
+
+    while let Some(chunk) = read_dir_chunks.next().await {
+        let mut set = JoinSet::new();
+        for entry in chunk.into_iter().flatten() {
             let file_type = entry.file_type().await?;
             if file_type.is_dir() {
                 let state = state.clone();
@@ -79,12 +84,10 @@ pub async fn import_folder(
                 let entry = entry.path().clone();
                 set.spawn(async move { import_file(state, entry.as_path(), folder_id).await });
             }
-        } else {
-            break;
         }
-    }
 
-    await_join_set(set).await?;
+        await_join_set(set).await?;
+    }
 
     debug!(?folder, "Processing folder done");
     Ok(())

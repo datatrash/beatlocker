@@ -36,7 +36,7 @@ impl Debug for TaskEnvelope {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum TaskMessage {
     Ping,
     ImportFolder {

@@ -3,7 +3,10 @@ use beatlocker_server::{
     SERVER_VERSION,
 };
 use clap::Parser;
+use governor::{Jitter, Quota, RateLimiter};
+use std::num::NonZeroU32;
 use std::path::PathBuf;
+use std::time::Duration;
 use tokio::{signal, task};
 use tracing::info;
 
@@ -75,15 +78,24 @@ async fn main() -> AppResult<()> {
     let mgr = app.task_manager.clone();
     let tasks = vec![app.import_all_folders()?, app.import_external_metadata()?];
     let join = task::spawn(async move {
-        for task in tasks {
-            let _ = mgr.send(task).await;
+        let lim = RateLimiter::direct(Quota::per_hour(NonZeroU32::new(1u32).unwrap()));
+        let jitter = Jitter::new(
+            Duration::from_secs(60 * 60 * 4),
+            Duration::from_secs(60 * 60 * 3),
+        );
+
+        loop {
+            lim.until_ready_with_jitter(jitter).await;
+            for task in &tasks {
+                let _ = mgr.send(task.clone()).await;
+            }
         }
     });
 
     server.await?;
 
     app.task_manager.shutdown().await?;
-    join.await?;
+    join.abort();
 
     info!("Server is shutdown");
     Ok(())

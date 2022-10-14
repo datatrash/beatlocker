@@ -67,33 +67,31 @@ pub async fn import_external_metadata(state: Arc<TaskState>) -> AppResult<()> {
 
     while let Some(chunk) = results.next().await {
         let mut set = JoinSet::new();
-        for chunk_item in chunk {
-            if let Ok(info) = chunk_item {
-                let state = state.clone();
-                let discogs_token = discogs_token.clone();
-                set.spawn(async move {
-                    let path = info.path.as_os_str().to_string_lossy();
-                    debug!(?path, "Updating metadata");
+        for info in chunk.into_iter().flatten() {
+            let state = state.clone();
+            let discogs_token = discogs_token.clone();
+            set.spawn(async move {
+                let path = info.path.as_os_str().to_string_lossy();
+                debug!(?path, "Updating metadata");
 
-                    if !wrap_err(
-                        update_discogs_metadata(&state, discogs_token.clone(), &info, true),
+                if !wrap_err(
+                    update_discogs_metadata(&state, discogs_token.clone(), &info, true),
+                    || true,
+                )
+                .await
+                {
+                    // try again, but without album info this time
+                    let _ = wrap_err(
+                        update_discogs_metadata(&state, discogs_token.clone(), &info, false),
                         || true,
                     )
-                    .await
-                    {
-                        // try again, but without album info this time
-                        let _ = wrap_err(
-                            update_discogs_metadata(&state, discogs_token.clone(), &info, false),
-                            || true,
-                        )
-                        .await;
-                    }
+                    .await;
+                }
 
-                    info!(?path, "Completed updating metadata");
+                info!(?path, "Completed updating metadata");
 
-                    Ok(())
-                });
-            }
+                Ok(())
+            });
         }
 
         await_join_set(set).await?;
@@ -164,11 +162,9 @@ async fn update_discogs_metadata(
             if let Some(result) = search_response.results.first() {
                 // Update song cover art
                 if existing_song.cover_art_id.is_none() {
-                    if let Some(song_cover_url) =
-                        result.cover_image.as_ref().or(result.thumb.as_ref())
-                    {
-                        debug!(info.song_title, "Updating song cover art");
-                        let cover_art_id = insert_cover_art(&state.db, song_cover_url).await?;
+                    if let Some(url) = result.cover_image.as_ref().or(result.thumb.as_ref()) {
+                        debug!(url, info.song_title, "Updating song cover art");
+                        let cover_art_id = insert_cover_art(&state.db, url).await?;
                         sqlx::query("UPDATE songs SET cover_art_id = ? WHERE song_id = ?")
                             .bind(cover_art_id)
                             .bind(existing_song.song_id)
@@ -193,6 +189,7 @@ async fn update_discogs_metadata(
                 if let Some(album) = &existing_album {
                     if album.cover_art_id.is_none() {
                         if let Some(master_url) = &result.master_url {
+                            debug!(master_url, "Getting Discogs master");
                             let response = discogs_client()
                                 .request(Method::GET, master_url)
                                 .query(&[("token", &discogs_token)])
@@ -203,7 +200,7 @@ async fn update_discogs_metadata(
                             if let Some(images) = master.images {
                                 if let Some(image) = images.first() {
                                     if let Some(url) = &image.resource_url {
-                                        debug!(info.album_title, "Updating album cover art");
+                                        debug!(url, info.album_title, "Updating album cover art");
                                         let cover_art_id = insert_cover_art(&state.db, url).await?;
                                         sqlx::query(
                                             "UPDATE albums SET cover_art_id = ? WHERE album_id = ?",
@@ -222,6 +219,7 @@ async fn update_discogs_metadata(
                 // Find artist image
                 if existing_artist.cover_art_id.is_none() {
                     if let Some(resource_url) = &result.resource_url {
+                        debug!(resource_url, "Getting Discogs resource");
                         let response = discogs_client()
                             .request(Method::GET, resource_url)
                             .query(&[("token", &discogs_token)])
@@ -232,7 +230,7 @@ async fn update_discogs_metadata(
                         if let Some(artists) = resource.artists {
                             if let Some(artist) = artists.first() {
                                 if let Some(url) = &artist.thumbnail_url {
-                                    debug!(info.artist_name, "Updating photo");
+                                    debug!(url, info.artist_name, "Updating photo");
                                     let cover_art_id = insert_cover_art(&state.db, url).await?;
                                     sqlx::query(
                                         "UPDATE artists SET cover_art_id = ? WHERE artist_id = ?",

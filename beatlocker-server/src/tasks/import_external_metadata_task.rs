@@ -20,6 +20,10 @@ use tokio_stream::StreamExt;
 use tracing::{debug, error, info};
 use uuid::Uuid;
 
+// Process the metadata of X songs at a time, to make sure we don't spawn a ton of tasks that are
+// all just waiting for rate limiters
+const CHUNK_SIZE: usize = 8;
+
 pub async fn import_external_metadata(state: Arc<TaskState>) -> AppResult<()> {
     if !state.options.import_external_metadata {
         return Ok(());
@@ -31,7 +35,7 @@ pub async fn import_external_metadata(state: Arc<TaskState>) -> AppResult<()> {
     };
 
     let mut conn = state.db.conn().await?;
-    let mut results = sqlx::query(
+    let results = sqlx::query(
         r#"
             SELECT fc.path, songs.song_id as song_id, songs.title as song_title, albums.album_id as album_id, albums.title as album_title, artists.artist_id as artist_id, artists.name as artist_name
             FROM songs
@@ -57,37 +61,43 @@ pub async fn import_external_metadata(state: Arc<TaskState>) -> AppResult<()> {
             artist_name: row.get("artist_name")
         }
     })
-    .fetch(conn.deref_mut());
+    .fetch(conn.deref_mut())
+        .chunks_timeout(CHUNK_SIZE, Duration::from_secs(10));
+    tokio::pin!(results);
 
-    let mut set = JoinSet::new();
-    while let Some(info) = results.try_next().await? {
-        let state = state.clone();
-        let discogs_token = discogs_token.clone();
-        set.spawn(async move {
-            let path = info.path.as_os_str().to_string_lossy();
-            debug!(?path, "Updating metadata");
+    while let Some(chunk) = results.next().await {
+        let mut set = JoinSet::new();
+        for chunk_item in chunk {
+            if let Ok(info) = chunk_item {
+                let state = state.clone();
+                let discogs_token = discogs_token.clone();
+                set.spawn(async move {
+                    let path = info.path.as_os_str().to_string_lossy();
+                    debug!(?path, "Updating metadata");
 
-            if !wrap_err(
-                update_discogs_metadata(&state, discogs_token.clone(), &info, true),
-                || true,
-            )
-            .await
-            {
-                // try again, but without album info this time
-                let _ = wrap_err(
-                    update_discogs_metadata(&state, discogs_token.clone(), &info, false),
-                    || true,
-                )
-                .await;
+                    if !wrap_err(
+                        update_discogs_metadata(&state, discogs_token.clone(), &info, true),
+                        || true,
+                    )
+                    .await
+                    {
+                        // try again, but without album info this time
+                        let _ = wrap_err(
+                            update_discogs_metadata(&state, discogs_token.clone(), &info, false),
+                            || true,
+                        )
+                        .await;
+                    }
+
+                    info!(?path, "Completed updating metadata");
+
+                    Ok(())
+                });
             }
+        }
 
-            info!(?path, "Completed updating metadata");
-
-            Ok(())
-        });
+        await_join_set(set).await?;
     }
-
-    await_join_set(set).await?;
 
     Ok(())
 }

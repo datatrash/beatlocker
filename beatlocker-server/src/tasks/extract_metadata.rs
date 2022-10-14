@@ -5,6 +5,7 @@ use ogg_metadata::{read_format, OggFormat};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::io::{Read, Seek, SeekFrom};
+use std::path::PathBuf;
 use tracing::warn;
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -19,14 +20,19 @@ pub struct SongMetadata {
     pub bit_rate: Option<u32>,
     pub duration: Option<chrono::Duration>,
     pub genre: Option<String>,
+    pub content_type: Option<String>,
+    pub suffix: Option<String>,
 }
 
 pub fn extract_metadata(
-    filename: Option<&OsStr>,
+    filename: &OsStr,
     mut reader: impl Clone + Read + Seek,
 ) -> AppResult<Option<SongMetadata>> {
-    match read_format(reader.clone()) {
+    let mut file_is_valid = false;
+
+    let metadata = match read_format(reader.clone()) {
         Ok(formats) => {
+            file_is_valid = true;
             if let Some(format) = formats.first() {
                 match format {
                     OggFormat::Vorbis(vorbis) => {
@@ -42,23 +48,6 @@ pub fn extract_metadata(
                             .into_iter()
                             .collect::<HashMap<_, _>>();
 
-                        // Try to extract the artist and title from the filename as well,
-                        // for use when tags are missing
-                        let filename_metadata = match filename {
-                            Some(filename) => {
-                                let filename = filename.to_string_lossy();
-
-                                match filename.split_once('-') {
-                                    Some((artist, title)) => (
-                                        Some(title.trim().to_string()),
-                                        Some(artist.trim().to_string()),
-                                    ),
-                                    None => (None, None),
-                                }
-                            }
-                            None => (None, None),
-                        };
-
                         let date = header.remove("date").and_then(|s| {
                             DateTime::parse_from_rfc3339(&s)
                                 .ok()
@@ -73,14 +62,24 @@ pub fn extract_metadata(
                                 })
                         });
 
-                        Ok(Some(SongMetadata {
+                        let suffix = PathBuf::from(filename)
+                            .extension()
+                            .and_then(|s| s.to_str())
+                            .map(|s| s.to_lowercase());
+                        let content_type = match &suffix {
+                            Some(ct) => match ct.as_str() {
+                                "ogg" => Some("audio/ogg".to_string()),
+                                _ => None,
+                            },
+                            _ => None,
+                        };
+
+                        Some(SongMetadata {
                             title: header
                                 .remove("title")
-                                .or(filename_metadata.0)
                                 .unwrap_or_else(|| "Unknown".to_string()),
                             artist: header
                                 .remove("artist")
-                                .or(filename_metadata.1)
                                 .unwrap_or_else(|| "Unknown artist".to_string()),
                             album: header.remove("album"),
                             album_artist: header.remove("albumartist"),
@@ -98,17 +97,68 @@ pub fn extract_metadata(
                                 duration_seconds.round() as i64
                             )),
                             genre: header.remove("genre"),
-                        }))
+                            content_type,
+                            suffix,
+                        })
                     }
-                    _ => Ok(None),
+                    _ => None,
                 }
             } else {
-                Ok(None)
+                None
             }
         }
         Err(e) => {
             warn!(?filename, ?e, "Could not parse metadata from file");
-            Ok(None)
+            None
+        }
+    };
+
+    if !file_is_valid {
+        return Ok(None);
+    }
+
+    // Try to extract the artist and title from the filename as well,
+    // for use when tags are missing
+    let (title, artist) = {
+        let without_extension = PathBuf::from(filename).with_extension("");
+        let filename = without_extension.to_string_lossy();
+
+        match filename.split_once('-') {
+            Some((artist, title)) => (
+                Some(title.trim().to_string()),
+                Some(artist.trim().to_string()),
+            ),
+            None => (None, None),
+        }
+    };
+
+    match metadata {
+        Some(mut metadata) => {
+            if let Some(title) = title {
+                if metadata.title == "Unknown" {
+                    metadata.title = title;
+                }
+            }
+            if let Some(artist) = artist {
+                if metadata.artist == "Unknown artist" {
+                    metadata.artist = artist.clone();
+                    metadata.album_artist = Some(artist);
+                }
+            }
+
+            Ok(Some(metadata))
+        }
+        None => {
+            // We didn't extract any metadata, so let's try to use title/artist
+            match (title, artist) {
+                (Some(title), Some(artist)) => Ok(Some(SongMetadata {
+                    title,
+                    artist: artist.clone(),
+                    album_artist: Some(artist),
+                    ..Default::default()
+                })),
+                _ => Ok(None),
+            }
         }
     }
 }
@@ -119,9 +169,14 @@ mod tests {
     use std::io::Cursor;
 
     #[test]
-    fn can_extract() {
+    fn can_extract_ogg() {
         let bytes = include_bytes!("../../tests/data/Richard Bona/Richard Bona - Ba Senge.ogg");
-        let metadata = extract_metadata(None, Cursor::new(bytes)).unwrap().unwrap();
+        let metadata = extract_metadata(
+            OsStr::new("Richard Bona - Ba Senge.ogg"),
+            Cursor::new(bytes),
+        )
+        .unwrap()
+        .unwrap();
         assert_eq!(metadata.title, "Ba Senge");
         assert_eq!(metadata.album, Some("Tiki".to_string()));
         assert_eq!(metadata.artist, "Richard Bona".to_string());
@@ -132,5 +187,24 @@ mod tests {
         );
         assert_eq!(metadata.track_number, Some(1));
         assert_eq!(metadata.disc_number, Some(1));
+        assert_eq!(metadata.content_type, Some("audio/ogg".to_string()));
+        assert_eq!(metadata.suffix, Some("ogg".to_string()));
+    }
+
+    #[test]
+    fn can_extract_unknown_metadata() {
+        let bytes = include_bytes!("../../tests/data/Unknown/Unknown Artist - Unknown Song.ogg");
+        let metadata = extract_metadata(OsStr::new("Foo - Bar.ogg"), Cursor::new(bytes))
+            .unwrap()
+            .unwrap();
+        assert_eq!(metadata.title, "Bar");
+        assert_eq!(metadata.album, None);
+        assert_eq!(metadata.artist, "Foo".to_string());
+        assert_eq!(metadata.album_artist, Some("Foo".to_string()));
+        assert_eq!(metadata.date, None);
+        assert_eq!(metadata.track_number, None);
+        assert_eq!(metadata.disc_number, None);
+        assert_eq!(metadata.content_type, Some("audio/ogg".to_string()));
+        assert_eq!(metadata.suffix, Some("ogg".to_string()));
     }
 }

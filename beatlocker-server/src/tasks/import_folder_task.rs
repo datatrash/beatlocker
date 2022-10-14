@@ -1,7 +1,7 @@
 use super::*;
 use crate::db::{DbAlbum, DbArtist, DbFolder, DbFolderChild, DbSong};
+use crate::str_to_uuid;
 use crate::tasks::extract_metadata::extract_metadata;
-use crate::uri_to_uuid;
 use async_recursion::async_recursion;
 use std::path::Path;
 use std::time::Duration;
@@ -26,7 +26,6 @@ pub async fn import_folder(
                 .insert_folder_if_not_exists(&DbFolder {
                     folder_id: Uuid::nil(),
                     parent_id: None,
-                    uri: "root".to_owned(),
                     name: "root".to_owned(),
                     cover_art_id: None,
                     created: (state.options.now_provider)(),
@@ -40,14 +39,12 @@ pub async fn import_folder(
         Uuid::nil()
     } else {
         let folder_name = folder.file_name().unwrap();
-        let folder_uri = format!("path:{}", folder.to_str().unwrap());
 
         state
             .db
             .insert_folder_if_not_exists(&DbFolder {
-                folder_id: uri_to_uuid(&folder_uri),
+                folder_id: str_to_uuid(folder.to_str().unwrap()),
                 parent_id: Some(parent_folder_id),
-                uri: folder_uri.clone(),
                 name: folder_name.to_string_lossy().to_string(),
                 cover_art_id: None,
                 created: (state.options.now_provider)(),
@@ -101,15 +98,23 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
         .await?
         .is_some()
     {
-        debug!(?path, "Rejecting file due to path");
+        debug!(?path, "Already imported");
         return Ok(());
     }
+
+    let filename = match path.file_name() {
+        Some(f) => f,
+        None => {
+            debug!(?path, "Could not determine filename");
+            return Ok(());
+        }
+    };
 
     info!(?path, "Importing file");
     let (metadata, file_size) = {
         let file = std::fs::File::open(path)?;
         (
-            extract_metadata(path.file_name(), &file)?,
+            extract_metadata(filename, &file)?,
             file.metadata()?.len() as u32,
         )
     };
@@ -124,8 +129,7 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
             state
                 .db
                 .insert_album_if_not_exists(&DbAlbum {
-                    album_id: uri_to_uuid(album_title.as_str()),
-                    uri: album_title.clone(),
+                    album_id: str_to_uuid(album_title.as_str()),
                     title: album_title.clone(),
                     cover_art_id: None,
                 })
@@ -139,8 +143,7 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
         state
             .db
             .insert_artist_if_not_exists(&DbArtist {
-                artist_id: uri_to_uuid(&metadata.artist),
-                uri: metadata.artist.clone(),
+                artist_id: str_to_uuid(&metadata.artist),
                 name: metadata.artist.clone(),
                 cover_art_id: None,
             })
@@ -152,8 +155,7 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
             state
                 .db
                 .insert_artist_if_not_exists(&DbArtist {
-                    artist_id: uri_to_uuid(artist_name.as_str()),
-                    uri: artist_name.to_string(),
+                    artist_id: str_to_uuid(artist_name.as_str()),
                     name: artist_name.clone(),
                     cover_art_id: None,
                 })
@@ -173,32 +175,20 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
     }
 
     let song_title = &metadata.title;
-    let suffix = path
-        .extension()
-        .and_then(|s| s.to_str())
-        .map(|s| s.to_lowercase());
-    let content_type = match &suffix {
-        Some(ct) => match ct.as_str() {
-            "ogg" => Some("audio/ogg"),
-            _ => None,
-        },
-        _ => None,
-    };
 
     let song_id = Some(
         state
             .db
             .insert_song_if_not_exists(&DbSong {
-                song_id: uri_to_uuid(song_title.as_str()),
-                uri: song_title.to_string(),
+                song_id: str_to_uuid(song_title.as_str()),
                 title: song_title.clone(),
                 created: (state.options.now_provider)(),
                 date: metadata.date,
                 cover_art_id: None,
                 artist_id,
                 album_id,
-                content_type: content_type.map(|s| s.to_owned()),
-                suffix,
+                content_type: metadata.content_type,
+                suffix: metadata.suffix,
                 size: Some(file_size),
                 track_number: metadata.track_number,
                 disc_number: metadata.disc_number,
@@ -212,12 +202,12 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
     state
         .db
         .insert_folder_child_if_not_exists(&DbFolderChild {
-            folder_child_id: uri_to_uuid(folder_child_path.as_str()),
+            folder_child_id: str_to_uuid(folder_child_path.as_str()),
             folder_id,
-            uri: folder_child_path.to_string(),
             path: folder_child_path,
             name: song_title.clone(),
             song_id,
+            last_updated: None,
         })
         .await?;
 

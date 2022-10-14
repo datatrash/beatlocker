@@ -12,9 +12,9 @@ mod rate_limiter;
 
 pub use rate_limiter::RateLimiterMiddleware;
 
-pub fn uri_to_uuid(uri: &str) -> Uuid {
+pub fn str_to_uuid(str: &str) -> Uuid {
     let mut h = SipHasher::new();
-    uri.hash(&mut h);
+    str.hash(&mut h);
     let result = h.finish128();
     Uuid::from_u64_pair(result.h1, result.h2)
 }

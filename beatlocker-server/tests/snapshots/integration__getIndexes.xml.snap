@@ -5,13 +5,13 @@ expression: res.xml_string().await
 <subsonic-response status="ok" version="1.16.1" type="beatlocker" serverVersion="unknown">
   <indexes ignoredArticles="The El La Los Las Le Les Os As O A">
     <index name="M">
-      <artist id="9600e0e0-145e-644d-d38f-e501a6252d79" name="Motorway OST" albumCount="1"/>
+      <artist id="68f8b71b-d9b4-c77e-c7f1-e4af263bcd93" name="Motorway OST" albumCount="1"/>
     </index>
     <index name="R">
-      <artist id="f68bd7e1-0e30-21db-beea-aad58d2429ca" name="Richard Bona" albumCount="1"/>
+      <artist id="75a22ef8-9597-4c55-9be1-097d94babc31" name="Richard Bona" albumCount="1"/>
     </index>
     <index name="U">
-      <artist id="26a804ae-5598-c3c8-c072-48cc0e6ff0ea" name="Unknown" albumCount="1"/>
+      <artist id="de32d996-8297-d3a7-16be-4ff938ff212e" name="Unknown" albumCount="1"/>
     </index>
   </indexes>
 </subsonic-response>

@@ -3,8 +3,8 @@ source: beatlocker-server/tests/integration.rs
 expression: res.xml_string().await
 ---
 <subsonic-response status="ok" version="1.16.1" type="beatlocker" serverVersion="unknown">
-  <directory id="9600e0e0-145e-644d-d38f-e501a6252d79" name="Motorway OST">
-    <child id="694a6eee-8eac-2a60-af58-e96493edafcb" parent="9600e0e0-145e-644d-d38f-e501a6252d79" isDir="true" title="MotorwayNested" name="MotorwayNested" created="2020-02-02T00:00:00Z" isVideo="false"/>
-    <child id="7b2abff8-3571-99f6-b224-56250315eb14" parent="9600e0e0-145e-644d-d38f-e501a6252d79" isDir="false" created="2020-02-02T00:00:00Z" title="Diamond Dealers" album="Motorway (Original Motion Picture Soundtrack)" artist="Alex Gopher" track="1" year="2021" size="105424" contentType="audio/ogg" suffix="ogg" duration="6" bitRate="160" discNumber="1" albumId="cbe80ce0-eb7e-37f6-a70a-87ab0dec3ac9" artistId="c2042f2f-fbda-64e4-ff33-62bad6853d99" isVideo="false" genre="Unknown genre"/>
+  <directory id="68f8b71b-d9b4-c77e-c7f1-e4af263bcd93" name="Motorway OST">
+    <child id="7bb81eaa-b6a7-7f1d-7624-622193088eb6" parent="68f8b71b-d9b4-c77e-c7f1-e4af263bcd93" isDir="true" title="MotorwayNested" name="MotorwayNested" created="2020-02-02T00:00:00Z" isVideo="false"/>
+    <child id="7b2abff8-3571-99f6-b224-56250315eb14" parent="68f8b71b-d9b4-c77e-c7f1-e4af263bcd93" isDir="false" created="2020-02-02T00:00:00Z" title="Diamond Dealers" album="Motorway (Original Motion Picture Soundtrack)" artist="Alex Gopher" track="1" year="2021" size="105424" contentType="audio/ogg" suffix="ogg" duration="6" bitRate="160" discNumber="1" albumId="cbe80ce0-eb7e-37f6-a70a-87ab0dec3ac9" artistId="c2042f2f-fbda-64e4-ff33-62bad6853d99" isVideo="false" genre="Unknown genre"/>
   </directory>
 </subsonic-response>

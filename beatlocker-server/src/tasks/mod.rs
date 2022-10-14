@@ -5,7 +5,7 @@ mod import_folder_task;
 use crate::db::DbCoverArt;
 use crate::tasks::import_external_metadata_task::import_external_metadata;
 use crate::tasks::import_folder_task::import_folder;
-use crate::{reqwest_client, uri_to_uuid, AppResult, Db, ServerOptions};
+use crate::{reqwest_client, str_to_uuid, AppResult, Db, ServerOptions};
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -173,7 +173,7 @@ async fn insert_cover_art(db: &Db, url: &str) -> AppResult<Uuid> {
     let url = head.url().to_string();
 
     // only cover the path in the UUID, since hostnames may differ sometimes due to CDNs etc
-    let cover_art_id = uri_to_uuid(head.url().path());
+    let cover_art_id = str_to_uuid(head.url().path());
 
     match db.find_cover_art(cover_art_id).await? {
         Some(id) => Ok(id),
@@ -181,11 +181,7 @@ async fn insert_cover_art(db: &Db, url: &str) -> AppResult<Uuid> {
             let response = client.get(&url).send().await?;
             let data = response.bytes().await?.to_vec();
             Ok(db
-                .insert_cover_art_if_not_exists(&DbCoverArt {
-                    cover_art_id,
-                    uri: url,
-                    data,
-                })
+                .insert_cover_art_if_not_exists(&DbCoverArt { cover_art_id, data })
                 .await?)
         }
     }

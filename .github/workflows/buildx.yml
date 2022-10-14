@@ -5,6 +5,10 @@ on:
         type: string
         required: true
         description: container image
+      readme:
+        type: string
+        required: true
+        description: readme location
       registry:
         type: string
         required: false
@@ -67,7 +71,7 @@ jobs:
           labels: |
             org.opencontainers.image.licenses=${{ inputs.license }}
             org.opencontainers.image.vendor=${{ inputs.vendor }}
-            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/${{ inputs.image }}/main/readme.md
+            io.artifacthub.package.readme-url=${{ inputs.readme }}
           tags: |
             type=schedule
             type=ref,event=branch

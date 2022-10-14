@@ -11,7 +11,7 @@ expression: "res.json::<serde_json::Value>().await"
           "artist": [
             {
               "albumCount": 1,
-              "id": "9600e0e0-145e-644d-d38f-e501a6252d79",
+              "id": "68f8b71b-d9b4-c77e-c7f1-e4af263bcd93",
               "name": "Motorway OST"
             }
           ],
@@ -21,7 +21,7 @@ expression: "res.json::<serde_json::Value>().await"
           "artist": [
             {
               "albumCount": 1,
-              "id": "f68bd7e1-0e30-21db-beea-aad58d2429ca",
+              "id": "75a22ef8-9597-4c55-9be1-097d94babc31",
               "name": "Richard Bona"
             }
           ],
@@ -31,7 +31,7 @@ expression: "res.json::<serde_json::Value>().await"
           "artist": [
             {
               "albumCount": 1,
-              "id": "26a804ae-5598-c3c8-c072-48cc0e6ff0ea",
+              "id": "de32d996-8297-d3a7-16be-4ff938ff212e",
               "name": "Unknown"
             }
           ],

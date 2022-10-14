@@ -5,7 +5,6 @@ use sqlx::types::Uuid;
 pub struct DbFolder {
     pub folder_id: Uuid,
     pub parent_id: Option<Uuid>,
-    pub uri: String,
     pub name: String,
     pub cover_art_id: Option<Uuid>,
     pub created: DateTime<Utc>,
@@ -15,16 +14,15 @@ pub struct DbFolder {
 pub struct DbFolderChild {
     pub folder_child_id: Uuid,
     pub folder_id: Uuid,
-    pub uri: String,
     pub path: String,
     pub name: String,
     pub song_id: Option<Uuid>,
+    pub last_updated: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct DbAlbum {
     pub album_id: Uuid,
-    pub uri: String,
     pub title: String,
     pub cover_art_id: Option<Uuid>,
 }
@@ -32,7 +30,6 @@ pub struct DbAlbum {
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct DbArtist {
     pub artist_id: Uuid,
-    pub uri: String,
     pub name: String,
     pub cover_art_id: Option<Uuid>,
 }
@@ -40,7 +37,6 @@ pub struct DbArtist {
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct DbSong {
     pub song_id: Uuid,
-    pub uri: String,
     pub title: String,
     pub created: DateTime<Utc>,
     pub date: Option<DateTime<Utc>>,
@@ -60,6 +56,5 @@ pub struct DbSong {
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct DbCoverArt {
     pub cover_art_id: Uuid,
-    pub uri: String,
     pub data: Vec<u8>,
 }

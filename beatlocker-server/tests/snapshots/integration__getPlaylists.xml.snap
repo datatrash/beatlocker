@@ -4,9 +4,9 @@ expression: res.xml_string().await
 ---
 <subsonic-response status="ok" version="1.16.1" type="beatlocker" serverVersion="unknown">
   <playlists>
-    <playlist id="9600e0e0-145e-644d-d38f-e501a6252d79" name="Motorway OST" created="2020-02-02T00:00:00Z" public="true" songCount="1" duration="6"/>
-    <playlist id="694a6eee-8eac-2a60-af58-e96493edafcb" name="MotorwayNested" created="2020-02-02T00:00:00Z" public="true" songCount="1" duration="6"/>
-    <playlist id="f68bd7e1-0e30-21db-beea-aad58d2429ca" name="Richard Bona" created="2020-02-02T00:00:00Z" public="true" songCount="2" duration="12"/>
-    <playlist id="26a804ae-5598-c3c8-c072-48cc0e6ff0ea" name="Unknown" created="2020-02-02T00:00:00Z" public="true" songCount="1" duration="6"/>
+    <playlist id="68f8b71b-d9b4-c77e-c7f1-e4af263bcd93" name="Motorway OST" created="2020-02-02T00:00:00Z" public="true" songCount="1" duration="6"/>
+    <playlist id="7bb81eaa-b6a7-7f1d-7624-622193088eb6" name="MotorwayNested" created="2020-02-02T00:00:00Z" public="true" songCount="1" duration="6"/>
+    <playlist id="75a22ef8-9597-4c55-9be1-097d94babc31" name="Richard Bona" created="2020-02-02T00:00:00Z" public="true" songCount="2" duration="12"/>
+    <playlist id="de32d996-8297-d3a7-16be-4ff938ff212e" name="Unknown" created="2020-02-02T00:00:00Z" public="true" songCount="1" duration="6"/>
   </playlists>
 </subsonic-response>

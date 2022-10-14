@@ -14,6 +14,7 @@ jobs:
     with:
       image: datatrash/beatlocker-server
       platforms: linux/amd64
+      readme: https://raw.githubusercontent.com/datatrash/beatlocker/main/readme.md
     secrets:
       container-registry-username: ${{ secrets.REGISTRY_USERNAME }}
       container-registry-password: ${{ secrets.REGISTRY_PASSWORD }}

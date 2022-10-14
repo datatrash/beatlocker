@@ -53,7 +53,7 @@ async fn integration_test() -> AppResult<()> {
     assert_eq!(res.status(), StatusCode::OK);
     insta::assert_snapshot!("getMusicFolders.xml", res.xml_string().await);
 
-    let motorway_ost_folder_uuid = "9600e0e0-145e-644d-d38f-e501a6252d79";
+    let motorway_ost_folder_uuid = "68f8b71b-d9b4-c77e-c7f1-e4af263bcd93";
     let res = client
         .get(&format!(
             "/rest/getMusicDirectory?f=json&id={motorway_ost_folder_uuid}"

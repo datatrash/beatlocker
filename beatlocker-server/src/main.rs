@@ -8,7 +8,7 @@ use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::{signal, task};
-use tracing::info;
+use tracing::{info, warn};
 
 #[derive(Parser)]
 #[clap(
@@ -68,6 +68,14 @@ async fn main() -> AppResult<()> {
         subsonic_auth,
         ..Default::default()
     };
+
+    if options.discogs_token.is_none() {
+        info!("No Discogs API token was found. Discogs will not be queried.");
+    }
+    if let SubsonicAuth::None = &options.subsonic_auth {
+        warn!("No authorization has been set up. Make sure this server isn't public.");
+    }
+
     let app = App::new(options).await?;
     let server = axum::Server::bind(&"0.0.0.0:2222".parse().unwrap())
         .serve(app.app.clone().into_make_service())

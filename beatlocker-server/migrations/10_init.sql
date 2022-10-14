@@ -1,7 +1,6 @@
 CREATE TABLE albums
 (
     album_id text primary key not null,
-    uri text not null unique,
     title text not null,
     cover_art_id text,
     foreign key (cover_art_id) references cover_art(cover_art_id)
@@ -11,7 +10,6 @@ CREATE TABLE folders
 (
     folder_id text primary key not null,
     parent_id text,
-    uri text not null unique,
     name text not null,
     cover_art_id text,
     created datetime not null,
@@ -23,10 +21,10 @@ CREATE TABLE folder_children
 (
     folder_child_id text primary key not null,
     folder_id text not null,
-    uri text not null unique,
     path text not null,
     name text not null,
     song_id text,
+    last_updated datetime,
     foreign key (folder_id) references folders(folder_id),
     foreign key (song_id) references songs(song_id)
 );
@@ -34,14 +32,12 @@ CREATE TABLE folder_children
 CREATE TABLE cover_art
 (
     cover_art_id text primary key not null,
-    uri text not null unique,
     data blob
 );
 
 CREATE TABLE artists
 (
     artist_id text primary key not null,
-    uri text not null unique,
     name text not null,
     cover_art_id number,
     foreign key (cover_art_id) references cover_art(cover_art_id)
@@ -59,7 +55,6 @@ CREATE TABLE album_artists
 CREATE TABLE songs
 (
     song_id text primary key not null,
-    uri text not null unique,
     title text not null,
     created datetime not null,
     date datetime,

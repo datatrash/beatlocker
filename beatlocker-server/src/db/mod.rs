@@ -67,19 +67,29 @@ impl Db {
         Ok(self.pool.get().await?)
     }
 
+    pub async fn update_last_updated(&self, folder_child_id: Uuid) -> AppResult<()> {
+        let timestamp = chrono::offset::Utc::now();
+        sqlx::query("UPDATE folder_children SET last_updated = ? WHERE folder_child_id = ?")
+            .bind(timestamp)
+            .bind(folder_child_id)
+            .execute(self.conn().await?.deref_mut())
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn insert_album_if_not_exists(&self, album: &DbAlbum) -> AppResult<Uuid> {
         debug!(?album, "Inserting album");
 
         let id = sqlx::query(
             r#"
-        INSERT INTO albums (album_id, uri, title, cover_art_id)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT (uri) DO UPDATE set uri = uri
+        INSERT INTO albums (album_id, title, cover_art_id)
+        VALUES (?, ?, ?)
+        ON CONFLICT (album_id) DO UPDATE set album_id = album_id
         RETURNING album_id
         "#,
         )
         .bind(album.album_id)
-        .bind(&album.uri)
         .bind(&album.title)
         .bind(album.cover_art_id)
         .map(|row| row.get("album_id"))
@@ -94,14 +104,13 @@ impl Db {
 
         let id = sqlx::query(
             r#"
-        INSERT INTO artists (artist_id, uri, name, cover_art_id)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT (uri) DO UPDATE set uri = uri
+        INSERT INTO artists (artist_id, name, cover_art_id)
+        VALUES (?, ?, ?)
+        ON CONFLICT (artist_id) DO UPDATE set artist_id = artist_id
         RETURNING artist_id
         "#,
         )
         .bind(artist.artist_id)
-        .bind(&artist.uri)
         .bind(&artist.name)
         .bind(artist.cover_art_id)
         .map(|row| row.get("artist_id"))
@@ -133,7 +142,6 @@ impl Db {
                 let duration: Option<u32> = row.get("duration");
                 DbSong {
                     song_id: row.get("song_id"),
-                    uri: row.get("uri"),
                     title: row.get("title"),
                     created: row.get("created"),
                     date: row.get("date"),
@@ -161,7 +169,6 @@ impl Db {
             .bind(id)
             .map(|row: SqliteRow| DbArtist {
                 artist_id: row.get("artist_id"),
-                uri: row.get("uri"),
                 name: row.get("name"),
                 cover_art_id: row.get("cover_art_id"),
             })
@@ -176,20 +183,9 @@ impl Db {
             .bind(id)
             .map(|row: SqliteRow| DbAlbum {
                 album_id: row.get("album_id"),
-                uri: row.get("uri"),
                 title: row.get("title"),
                 cover_art_id: row.get("cover_art_id"),
             })
-            .fetch_optional(self.conn().await?.deref_mut())
-            .await?;
-
-        Ok(result)
-    }
-
-    pub async fn find_folder_by_uri(&self, uri: &str) -> AppResult<Option<Uuid>> {
-        let result = sqlx::query("SELECT folder_id FROM folders WHERE uri = ?")
-            .bind(uri)
-            .map(|row: SqliteRow| row.get("folder_id"))
             .fetch_optional(self.conn().await?.deref_mut())
             .await?;
 
@@ -221,15 +217,14 @@ impl Db {
 
         let id = sqlx::query(
             r#"
-        INSERT INTO folders (folder_id, parent_id, uri, name, cover_art_id, created)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT (uri) DO UPDATE set uri = uri
+        INSERT INTO folders (folder_id, parent_id, name, cover_art_id, created)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT (folder_id) DO UPDATE set folder_id = folder_id
         RETURNING folder_id
         "#,
         )
         .bind(folder.folder_id)
         .bind(folder.parent_id)
-        .bind(&folder.uri)
         .bind(&folder.name)
         .bind(folder.cover_art_id)
         .bind(folder.created)
@@ -248,15 +243,14 @@ impl Db {
 
         let id = sqlx::query(
             r#"
-        INSERT INTO folder_children (folder_child_id, folder_id, uri, path, name, song_id)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT (uri) DO UPDATE set uri = uri
+        INSERT INTO folder_children (folder_child_id, folder_id, path, name, song_id)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT (folder_child_id) DO UPDATE set folder_child_id = folder_child_id
         RETURNING folder_child_id
         "#,
         )
         .bind(child.folder_child_id)
         .bind(child.folder_id)
-        .bind(&child.uri)
         .bind(&child.path)
         .bind(&child.name)
         .bind(child.song_id)
@@ -272,14 +266,13 @@ impl Db {
 
         let id = sqlx::query(
             r#"
-        INSERT INTO songs (song_id, uri, title, created, date, cover_art_id, artist_id, album_id, content_type, suffix, size, track_number, disc_number, duration, bit_rate)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT (uri) DO UPDATE set uri = uri
+        INSERT INTO songs (song_id, title, created, date, cover_art_id, artist_id, album_id, content_type, suffix, size, track_number, disc_number, duration, bit_rate)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (song_id) DO UPDATE set song_id = song_id
         RETURNING song_id
         "#,
         )
             .bind(song.song_id)
-            .bind(&song.uri)
             .bind(&song.title)
             .bind(song.created)
             .bind(song.date)
@@ -301,20 +294,18 @@ impl Db {
     }
 
     pub async fn insert_cover_art_if_not_exists(&self, cover_art: &DbCoverArt) -> AppResult<Uuid> {
-        let uri = &cover_art.uri;
-        debug!(?uri, "Inserting cover art");
+        let cover_art_id = cover_art.cover_art_id.to_string();
+        debug!(cover_art_id, "Inserting cover art");
 
         let id = sqlx::query(
             r#"
-        INSERT INTO cover_art (cover_art_id, uri, data)
-        VALUES (?, ?, ?)
+        INSERT INTO cover_art (cover_art_id, data)
+        VALUES (?, ?)
         ON CONFLICT (cover_art_id) DO UPDATE set cover_art_id = cover_art_id
-        ON CONFLICT (uri) DO UPDATE set uri = uri
         RETURNING cover_art_id
         "#,
         )
         .bind(cover_art.cover_art_id)
-        .bind(&cover_art.uri)
         .bind(&cover_art.data)
         .map(|row| row.get("cover_art_id"))
         .fetch_one(self.conn().await?.deref_mut())

@@ -75,31 +75,27 @@ mod tests {
 
     #[test]
     fn test_check_user() {
-        assert_eq!(
-            check_user(
-                "joe",
-                "sesame",
-                "26719a1196d2a940705a59634eb18eab",
-                "c19b2d"
-            ),
-            true
-        );
-        assert_eq!(
-            check_user("joe", "snuh", "26719a1196d2a940705a59634eb18eab", "c19b2d"),
-            false
-        );
+        assert!(check_user(
+            "joe",
+            "sesame",
+            "26719a1196d2a940705a59634eb18eab",
+            "c19b2d"
+        ));
+        assert!(!check_user(
+            "joe",
+            "snuh",
+            "26719a1196d2a940705a59634eb18eab",
+            "c19b2d"
+        ));
     }
 
     #[test]
     fn test_check_legacy_user() {
-        assert_eq!(check_legacy_user("joe", "foo", "joe", "foo"), true);
-        assert_eq!(check_legacy_user("joe", "foo", "joe", "enc:666f6f"), true);
-        assert_eq!(check_legacy_user("joe", "foo", "joe", "bar"), false);
-        assert_eq!(check_legacy_user("joe", "foo", "joe", "enc"), false);
-        assert_eq!(check_legacy_user("joe", "foo", "joe", "enc:"), false);
-        assert_eq!(
-            check_legacy_user("joe", "foo", "joe", "enc:randomstuff"),
-            false
-        );
+        assert!(check_legacy_user("joe", "foo", "joe", "foo"));
+        assert!(check_legacy_user("joe", "foo", "joe", "enc:666f6f"));
+        assert!(!check_legacy_user("joe", "foo", "joe", "bar"));
+        assert!(!check_legacy_user("joe", "foo", "joe", "enc"));
+        assert!(!check_legacy_user("joe", "foo", "joe", "enc:"));
+        assert!(!check_legacy_user("joe", "foo", "joe", "enc:randomstuff"));
     }
 }

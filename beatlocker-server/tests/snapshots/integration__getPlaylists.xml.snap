@@ -5,8 +5,8 @@ expression: res.xml_string().await
 <subsonic-response status="ok" version="1.16.1" type="beatlocker" serverVersion="unknown">
   <playlists>
     <playlist id="68f8b71b-d9b4-c77e-c7f1-e4af263bcd93" name="Motorway OST" created="2020-02-02T00:00:00Z" public="true" songCount="1" duration="6"/>
-    <playlist id="7bb81eaa-b6a7-7f1d-7624-622193088eb6" name="MotorwayNested" created="2020-02-02T00:00:00Z" public="true" songCount="1" duration="6"/>
-    <playlist id="75a22ef8-9597-4c55-9be1-097d94babc31" name="Richard Bona" created="2020-02-02T00:00:00Z" public="true" songCount="2" duration="12"/>
+    <playlist id="7bb81eaa-b6a7-7f1d-7624-622193088eb6" name="MotorwayNested" created="2020-02-02T00:00:00Z" public="true" songCount="1" duration="95"/>
+    <playlist id="75a22ef8-9597-4c55-9be1-097d94babc31" name="Richard Bona" created="2020-02-02T00:00:00Z" public="true" songCount="2" duration="33"/>
     <playlist id="de32d996-8297-d3a7-16be-4ff938ff212e" name="Unknown" created="2020-02-02T00:00:00Z" public="true" songCount="1" duration="6"/>
   </playlists>
 </subsonic-response>

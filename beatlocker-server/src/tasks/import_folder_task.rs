@@ -1,5 +1,5 @@
 use super::*;
-use crate::db::{DbAlbum, DbArtist, DbFolder, DbFolderChild, DbSong};
+use crate::db::{DbAlbum, DbArtist, DbFailedFolderChild, DbFolder, DbFolderChild, DbSong};
 use crate::str_to_uuid;
 use crate::tasks::extract_metadata::extract_metadata;
 use async_recursion::async_recursion;
@@ -69,13 +69,7 @@ pub async fn import_folder(
                     Ok(())
                 });
             }
-            if file_type.is_file()
-                && entry
-                    .path()
-                    .extension()
-                    .map(|s| s.to_string_lossy().to_lowercase())
-                    == Some("ogg".to_string())
-            {
+            if file_type.is_file() {
                 let folder_id = folder_id;
                 let state = state.clone();
                 let entry = entry.path().clone();
@@ -92,6 +86,17 @@ pub async fn import_folder(
 
 async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> AppResult<()> {
     let folder_child_path = path.to_str().unwrap().to_string();
+
+    if state
+        .db
+        .find_failed_folder_child_by_path(&folder_child_path)
+        .await?
+        .is_some()
+    {
+        debug!(?path, "Previously failed");
+        return Ok(());
+    }
+
     if state
         .db
         .find_folder_child_by_path(&folder_child_path)
@@ -113,23 +118,46 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
     info!(?path, "Importing file");
     let (metadata, file_size) = {
         let file = std::fs::File::open(path)?;
+        let len = file.metadata()?.len() as u32;
         (
-            extract_metadata(filename, &file)?,
-            file.metadata()?.len() as u32,
+            match extract_metadata(filename, || Box::new(file.try_clone().unwrap())) {
+                Ok(m) => m,
+                Err(e) => {
+                    warn!(?path, ?e, "Could not extract metadata");
+                    None
+                }
+            },
+            len,
         )
     };
-    if metadata.is_none() {
-        warn!(?path, "Could not extract metadata");
+
+    let failed = match &metadata {
+        Some(m) => !m.is_valid(),
+        None => true,
+    };
+    if failed {
+        warn!(?path, "File or extracted metadata is not valid");
+
+        state
+            .db
+            .insert_failed_folder_child_if_not_exists(&DbFailedFolderChild {
+                folder_child_id: str_to_uuid(folder_child_path.as_str()),
+                folder_id,
+                path: folder_child_path,
+            })
+            .await?;
+
         return Ok(());
     }
     let metadata = metadata.unwrap();
 
     let album_id = if let Some(album_title) = &metadata.album {
+        let album_id = str_to_uuid(&format!("{}{}", album_title, metadata.artist()));
         Some(
             state
                 .db
                 .insert_album_if_not_exists(&DbAlbum {
-                    album_id: str_to_uuid(album_title.as_str()),
+                    album_id,
                     title: album_title.clone(),
                     cover_art_id: None,
                 })
@@ -143,8 +171,8 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
         state
             .db
             .insert_artist_if_not_exists(&DbArtist {
-                artist_id: str_to_uuid(&metadata.artist),
-                name: metadata.artist.clone(),
+                artist_id: str_to_uuid(metadata.artist()),
+                name: metadata.artist().to_string(),
                 cover_art_id: None,
             })
             .await?,
@@ -174,13 +202,19 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
         }
     }
 
-    let song_title = &metadata.title;
+    let song_title = &metadata.title.unwrap();
 
+    let song_id = str_to_uuid(&format!(
+        "{}{}{}",
+        song_title,
+        artist_id.unwrap_or_default(),
+        album_id.unwrap_or_default()
+    ));
     let song_id = Some(
         state
             .db
             .insert_song_if_not_exists(&DbSong {
-                song_id: str_to_uuid(song_title.as_str()),
+                song_id,
                 title: song_title.clone(),
                 created: (state.options.now_provider)(),
                 date: metadata.date,

@@ -164,6 +164,12 @@ impl App {
             state: self.task_state(),
         })
     }
+
+    pub fn optimize_database(&self) -> AppResult<TaskMessage> {
+        Ok(TaskMessage::OptimizeDatabase {
+            state: self.task_state(),
+        })
+    }
 }
 
 pub fn enable_default_tracing() {

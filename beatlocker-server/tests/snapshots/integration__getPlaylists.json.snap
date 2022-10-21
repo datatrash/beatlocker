@@ -16,7 +16,7 @@ expression: "res.json::<serde_json::Value>().await"
         },
         {
           "created": "2020-02-02T00:00:00Z",
-          "duration": 6,
+          "duration": 95,
           "id": "7bb81eaa-b6a7-7f1d-7624-622193088eb6",
           "name": "MotorwayNested",
           "public": true,
@@ -24,7 +24,7 @@ expression: "res.json::<serde_json::Value>().await"
         },
         {
           "created": "2020-02-02T00:00:00Z",
-          "duration": 12,
+          "duration": 33,
           "id": "75a22ef8-9597-4c55-9be1-097d94babc31",
           "name": "Richard Bona",
           "public": true,

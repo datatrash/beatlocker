@@ -84,7 +84,11 @@ async fn main() -> AppResult<()> {
     info!("Server started");
 
     let mgr = app.task_manager.clone();
-    let tasks = vec![app.import_all_folders()?, app.import_external_metadata()?];
+    let tasks = vec![
+        app.import_all_folders()?,
+        app.import_external_metadata()?,
+        app.optimize_database()?,
+    ];
     let join = task::spawn(async move {
         let lim = RateLimiter::direct(Quota::per_hour(NonZeroU32::new(1u32).unwrap()));
         let jitter = Jitter::new(

@@ -21,6 +21,13 @@ pub struct DbFolderChild {
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
+pub struct DbFailedFolderChild {
+    pub folder_child_id: Uuid,
+    pub folder_id: Uuid,
+    pub path: String,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct DbAlbum {
     pub album_id: Uuid,
     pub title: String,

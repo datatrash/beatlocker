@@ -1,4 +1,3 @@
-use crate::api::format::SubsonicFormat;
 use crate::{AppResult, AppState};
 use std::ops::DerefMut;
 
@@ -20,27 +19,29 @@ pub struct StreamParams {
 }
 
 pub async fn stream(
-    _format: SubsonicFormat,
     Query(params): Query<StreamParams>,
     State(state): State<AppState>,
 ) -> AppResult<Response> {
     let mut conn = state.db.conn().await?;
 
-    let path = sqlx::query("SELECT path FROM folder_children WHERE folder_child_id = ?")
-        .bind(params.id)
-        .map(|row: SqliteRow| {
-            let path: String = row.get("path");
-            path
-        })
-        .fetch_optional(conn.deref_mut())
-        .await?;
+    let result = sqlx::query(
+        "SELECT path, s.content_type FROM folder_children fc LEFT JOIN songs s ON s.song_id = fc.song_id WHERE folder_child_id = ?",
+    )
+    .bind(params.id)
+    .map(|row: SqliteRow| {
+        let path: String = row.get("path");
+        let content_type: String = row.get("content_type");
+        (path, content_type)
+    })
+    .fetch_optional(conn.deref_mut())
+    .await?;
 
-    match path {
-        Some(path) => {
+    match result {
+        Some((path, content_type)) => {
             let file = tokio::fs::File::open(&path).await?;
 
             let headers = [
-                (CONTENT_TYPE, "audio/ogg"),
+                (CONTENT_TYPE, &content_type),
                 (CONTENT_LENGTH, &file.metadata().await?.len().to_string()),
             ];
             let body = AsyncReadBody::new(file);

@@ -1,23 +1,25 @@
+use crate::db::{DbAlbum, DbArtist, DbSong};
 use crate::tasks::{await_join_set, insert_cover_art};
 use crate::{
-    reqwest_client_builder, wrap_err, AppResult, ExponentialBackoff, RateLimiterMiddleware,
-    TaskState,
+    discogs_client, get_cover_art_archive, get_discogs, get_musicbrainz, wrap_err, AppResult,
+    CoverArtArchiveImagesResponse, DiscogsMasterResponse, DiscogsResourceResponse,
+    DiscogsSearchResponse, DiscogsSearchResult, MusicbrainzArtist, MusicbrainzArtistsResponse,
+    MusicbrainzRecording, MusicbrainzRecordingsResponse, TaskState,
 };
-use governor::Quota;
-use reqwest::header::CONTENT_TYPE;
+use anyhow::anyhow;
+use heck::ToTitleCase;
 use reqwest::Method;
-use reqwest_middleware::ClientWithMiddleware;
-use reqwest_retry::RetryTransientMiddleware;
-use serde::Deserialize;
 use sqlx::sqlite::SqliteRow;
 use sqlx::Row;
+use std::fmt::Debug;
 use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::task::JoinSet;
 use tokio_stream::StreamExt;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
+use unidecode::unidecode;
 use uuid::Uuid;
 
 // Process the metadata of X songs at a time, to make sure we don't spawn a ton of tasks that are
@@ -29,16 +31,12 @@ pub async fn import_external_metadata(state: Arc<TaskState>) -> AppResult<()> {
         return Ok(());
     }
 
-    let discogs_token = match &state.options.discogs_token {
-        Some(token) => token.clone(),
-        None => return Ok(()),
-    };
-
     let mut conn = state.db.conn().await?;
 
     // Only update metadata if this hasn't already happened X hours ago
-    let timestamp = chrono::offset::Utc::now() - chrono::Duration::hours(24);
+    let timestamp = chrono::offset::Utc::now() - chrono::Duration::hours(96);
 
+    // Grab all songs that may require updating and have not recently been touched
     let results = sqlx::query(
         r#"
             SELECT fc.path, fc.folder_child_id, songs.song_id as song_id, songs.title as song_title, albums.album_id as album_id, albums.title as album_title, artists.artist_id as artist_id, artists.name as artist_name
@@ -76,26 +74,38 @@ pub async fn import_external_metadata(state: Arc<TaskState>) -> AppResult<()> {
         let mut set = JoinSet::new();
         for info in chunk.into_iter().flatten() {
             let state = state.clone();
-            let discogs_token = discogs_token.clone();
+            let discogs_token = state.options.discogs_token.clone();
             set.spawn(async move {
                 let path = info.path.as_os_str().to_string_lossy();
                 debug!(?path, "Updating metadata");
 
-                state.db.update_last_updated(info.folder_child_id).await?;
+                let ctx = UpdateContext {
+                    state: &state,
+                    discogs_token: discogs_token.as_ref(),
+                    info: &info,
+                };
 
-                if !wrap_err(
-                    update_discogs_metadata(&state, discogs_token.clone(), &info, true),
-                    || true,
+                state.db.update_last_updated(info.folder_child_id).await?;
+                wrap_err(
+                    update_genre(&ctx, get_db_song_info(&state, &info).await?),
+                    || (),
                 )
-                .await
-                {
-                    // try again, but without album info this time
-                    let _ = wrap_err(
-                        update_discogs_metadata(&state, discogs_token.clone(), &info, false),
-                        || true,
-                    )
-                    .await;
-                }
+                .await;
+                wrap_err(
+                    update_song_cover_art(&ctx, get_db_song_info(&state, &info).await?),
+                    || (),
+                )
+                .await;
+                wrap_err(
+                    update_album_cover_art(&ctx, get_db_song_info(&state, &info).await?),
+                    || (),
+                )
+                .await;
+                wrap_err(
+                    update_artist_cover_art(&ctx, get_db_song_info(&state, &info).await?),
+                    || (),
+                )
+                .await;
 
                 info!(?path, "Completed updating metadata");
 
@@ -109,180 +119,249 @@ pub async fn import_external_metadata(state: Arc<TaskState>) -> AppResult<()> {
     Ok(())
 }
 
-async fn update_discogs_metadata(
-    state: &TaskState,
-    discogs_token: String,
-    info: &SongInfo,
-    include_album_in_search: bool,
-) -> AppResult<bool> {
-    let safe_album_title = info
-        .album_title
-        .clone()
-        .unwrap_or_default()
-        .replace(|c: char| !c.is_alphanumeric() && !c.is_whitespace(), "");
-    let safe_artist_name = info
-        .artist_name
-        .replace(|c: char| !c.is_alphanumeric() && !c.is_whitespace(), "");
-    let safe_song_title = info
-        .song_title
-        .replace(|c: char| !c.is_alphanumeric() && !c.is_whitespace(), "");
+async fn update_genre(ctx: &UpdateContext<'_>, db: DbSongInfo) -> AppResult<()> {
+    if db.song.genre.is_some() {
+        return Ok(());
+    }
 
-    let query_release_title = if include_album_in_search {
-        safe_album_title
-    } else {
-        "".to_string()
-    };
-    let query = &[
-        ("artist", &safe_artist_name),
-        ("release_title", &query_release_title),
-        ("track", &safe_song_title),
-        ("token", &discogs_token),
-    ];
-    debug!(?query, "Sending search query");
-    let response = discogs_client()
-        .request(Method::GET, "https://api.discogs.com/database/search")
-        .header(CONTENT_TYPE, "application/json")
-        .query(query)
-        .send()
-        .await?;
+    let mut genre = None;
+    if let Some(mut mb_song) = musicbrainz_find_song(ctx.info).await? {
+        genre = mb_song.tags.pop().map(|t| t.name);
+        if genre.is_none() {
+            if let Some(artist_id) = mb_song.artist_credit.pop().map(|c| c.artist.id) {
+                if let Some(mut artist) = musicbrainz_find_artist(artist_id).await? {
+                    genre = artist.tags.pop().map(|t| t.name);
+                }
+            }
+        };
+    }
 
-    let existing_song = state.db.find_song_by_id(info.song_id).await?;
-    let existing_song = match existing_song {
+    if genre.is_none() {
+        if let Some(mut discogs) = discogs_find_song(ctx).await? {
+            genre = discogs.genre.pop();
+        }
+    }
+
+    if let Some(genre) = genre {
+        let genre = genre.to_title_case();
+        debug!(ctx.info.song_title, genre, "Updating genre information");
+        sqlx::query("UPDATE songs SET genre = ? WHERE song_id = ?")
+            .bind(genre)
+            .bind(ctx.info.song_id)
+            .execute(ctx.state.db.conn().await?.deref_mut())
+            .await?;
+    }
+
+    Ok(())
+}
+
+async fn update_song_cover_art(ctx: &UpdateContext<'_>, db: DbSongInfo) -> AppResult<()> {
+    if db.song.cover_art_id.is_some() {
+        return Ok(());
+    }
+
+    let mut url = None;
+    if let Some(mut mb_song) = musicbrainz_find_song(ctx.info).await? {
+        if let Some(release) = mb_song.releases.pop() {
+            let images: Option<CoverArtArchiveImagesResponse> =
+                get_cover_art_archive("release", &release.id).await?;
+            if let Some(mut images) = images {
+                url = images.images.pop().map(|i| i.image).flatten();
+            }
+        }
+    }
+
+    if url.is_none() {
+        if let Some(discogs) = discogs_find_song(ctx).await? {
+            url = discogs.cover_image.or(discogs.thumb);
+        }
+    }
+
+    if let Some(url) = url {
+        if !url.is_empty() {
+            debug!(url, ctx.info.song_title, "Updating song cover art");
+            let cover_art_id = insert_cover_art(&ctx.state.db, &url).await?;
+            sqlx::query("UPDATE songs SET cover_art_id = ? WHERE song_id = ?")
+                .bind(cover_art_id)
+                .bind(db.song.song_id)
+                .execute(ctx.state.db.conn().await?.deref_mut())
+                .await?;
+        }
+    }
+
+    Ok(())
+}
+
+async fn update_album_cover_art(ctx: &UpdateContext<'_>, db: DbSongInfo) -> AppResult<()> {
+    if let Some(db_album) = &db.album {
+        if db_album.cover_art_id.is_some() {
+            return Ok(());
+        }
+
+        let mut url = None;
+        if let Some(discogs_token) = ctx.discogs_token {
+            if let Some(discogs) = discogs_find_song(ctx).await? {
+                if let Some(master_url) = &discogs.master_url {
+                    if !master_url.is_empty() {
+                        debug!(master_url, "Getting Discogs master");
+                        let response = discogs_client()
+                            .request(Method::GET, master_url)
+                            .query(&[("token", &discogs_token)])
+                            .send()
+                            .await?;
+                        let mut master = response.json::<DiscogsMasterResponse>().await?;
+                        url = master.images.pop().map(|u| u.resource_url).flatten();
+                    }
+                }
+            }
+        }
+
+        if let Some(url) = url {
+            if !url.is_empty() {
+                debug!(url, ctx.info.album_title, "Updating album cover art");
+                let cover_art_id = insert_cover_art(&ctx.state.db, &url).await?;
+                sqlx::query("UPDATE albums SET cover_art_id = ? WHERE album_id = ?")
+                    .bind(cover_art_id)
+                    .bind(db_album.album_id)
+                    .execute(ctx.state.db.conn().await?.deref_mut())
+                    .await?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn update_artist_cover_art(ctx: &UpdateContext<'_>, db: DbSongInfo) -> AppResult<()> {
+    if db.artist.cover_art_id.is_some() {
+        return Ok(());
+    }
+
+    let mut url = None;
+    if let Some(discogs_token) = ctx.discogs_token {
+        if let Some(discogs) = discogs_find_song(ctx).await? {
+            if let Some(resource_url) = &discogs.resource_url {
+                if !resource_url.is_empty() {
+                    debug!(resource_url, "Getting Discogs resource");
+                    let response = discogs_client()
+                        .request(Method::GET, resource_url)
+                        .query(&[("token", &discogs_token)])
+                        .send()
+                        .await?;
+                    let mut resource = response.json::<DiscogsResourceResponse>().await?;
+
+                    if let Some(artist) = resource.artists.pop() {
+                        url = artist.thumbnail_url;
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(url) = url {
+        if !url.is_empty() {
+            debug!(url, ctx.info.artist_name, "Updating photo");
+            let cover_art_id = insert_cover_art(&ctx.state.db, &url).await?;
+            sqlx::query("UPDATE artists SET cover_art_id = ? WHERE artist_id = ?")
+                .bind(cover_art_id)
+                .bind(ctx.info.artist_id)
+                .execute(ctx.state.db.conn().await?.deref_mut())
+                .await?;
+        }
+    }
+
+    Ok(())
+}
+
+async fn get_db_song_info(state: &TaskState, info: &SongInfo) -> AppResult<DbSongInfo> {
+    let song = state.db.find_song_by_id(info.song_id).await?;
+    let song = match song {
         Some(song) => song,
-        None => return Ok(true),
+        None => return Err(anyhow!("Song not found").into()),
     };
 
-    let existing_artist = state.db.find_artist_by_id(info.artist_id).await?;
-    let existing_artist = match existing_artist {
+    let artist = state.db.find_artist_by_id(info.artist_id).await?;
+    let artist = match artist {
         Some(artist) => artist,
-        None => return Ok(true),
+        None => return Err(anyhow!("Artist not found").into()),
     };
 
-    let existing_album = match info.album_id {
+    let album = match info.album_id {
         Some(id) => Some(state.db.find_album_by_id(id).await?),
         None => None,
     }
     .flatten();
 
-    let status_code = response.status();
-    let json = response.text().await?;
-    match serde_json::from_str::<DiscogsSearchResponse>(&json) {
-        Ok(search_response) => {
-            if let Some(result) = search_response.results.first() {
-                // Update song cover art
-                if existing_song.cover_art_id.is_none() {
-                    if let Some(url) = result.cover_image.as_ref().or(result.thumb.as_ref()) {
-                        if !url.is_empty() {
-                            debug!(url, info.song_title, "Updating song cover art");
-                            let cover_art_id = insert_cover_art(&state.db, url).await?;
-                            sqlx::query("UPDATE songs SET cover_art_id = ? WHERE song_id = ?")
-                                .bind(cover_art_id)
-                                .bind(existing_song.song_id)
-                                .execute(state.db.conn().await?.deref_mut())
-                                .await?;
-                        }
-                    }
-                }
+    Ok(DbSongInfo {
+        song,
+        artist,
+        album,
+    })
+}
 
-                // Update song genre
-                if existing_song.genre.is_none() {
-                    if let Some(genre) = result.genre.first() {
-                        debug!(info.song_title, "Updating genre information");
-                        sqlx::query("UPDATE songs SET genre = ? WHERE song_id = ?")
-                            .bind(genre)
-                            .bind(info.song_id)
-                            .execute(state.db.conn().await?.deref_mut())
-                            .await?;
-                    }
-                }
+async fn musicbrainz_find_song(info: &SongInfo) -> AppResult<Option<MusicbrainzRecording>> {
+    let mut query = format!(
+        "query=title:{} AND artist:{}",
+        info.song_title, info.artist_name
+    );
+    if let Some(album_title) = &info.album_title {
+        query += &format!(" AND release:{}", album_title);
+    }
 
-                // Find album image
-                if let Some(album) = &existing_album {
-                    if album.cover_art_id.is_none() {
-                        if let Some(master_url) = &result.master_url {
-                            if !master_url.is_empty() {
-                                debug!(master_url, "Getting Discogs master");
-                                let response = discogs_client()
-                                    .request(Method::GET, master_url)
-                                    .query(&[("token", &discogs_token)])
-                                    .send()
-                                    .await?;
-                                let master = response.json::<DiscogsMasterResponse>().await?;
+    let query = &[("fmt", "json"), ("query", &query)];
 
-                                if let Some(images) = master.images {
-                                    if let Some(image) = images.first() {
-                                        if let Some(url) = &image.resource_url {
-                                            if !url.is_empty() {
-                                                debug!(
-                                                    url,
-                                                    info.album_title, "Updating album cover art"
-                                                );
-                                                let cover_art_id =
-                                                    insert_cover_art(&state.db, url).await?;
-                                                sqlx::query(
-                                                    "UPDATE albums SET cover_art_id = ? WHERE album_id = ?",
-                                                )
-                                                    .bind(cover_art_id)
-                                                    .bind(album.album_id)
-                                                    .execute(state.db.conn().await?.deref_mut())
-                                                    .await?;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+    let response: Option<MusicbrainzRecordingsResponse> =
+        get_musicbrainz("recording", &query).await?;
+    Ok(response.map(|mut r| r.recordings.pop()).flatten())
+}
 
-                // Find artist image
-                if existing_artist.cover_art_id.is_none() {
-                    if let Some(resource_url) = &result.resource_url {
-                        if !resource_url.is_empty() {
-                            debug!(resource_url, "Getting Discogs resource");
-                            let response = discogs_client()
-                                .request(Method::GET, resource_url)
-                                .query(&[("token", &discogs_token)])
-                                .send()
-                                .await?;
-                            let resource = response.json::<DiscogsResourceResponse>().await?;
+async fn musicbrainz_find_artist(artist_id: String) -> AppResult<Option<MusicbrainzArtist>> {
+    let query = &[("fmt", "json"), ("query", &format!("arid:{}", artist_id))];
+    let artists_response: Option<MusicbrainzArtistsResponse> =
+        get_musicbrainz("artist", &query).await?;
+    Ok(artists_response.map(|mut r| r.artists.pop()).flatten())
+}
 
-                            if let Some(artists) = resource.artists {
-                                if let Some(artist) = artists.first() {
-                                    if let Some(url) = &artist.thumbnail_url {
-                                        if !url.is_empty() {
-                                            debug!(url, info.artist_name, "Updating photo");
-                                            let cover_art_id =
-                                                insert_cover_art(&state.db, url).await?;
-                                            sqlx::query(
-                                                "UPDATE artists SET cover_art_id = ? WHERE artist_id = ?",
-                                            )
-                                                .bind(cover_art_id)
-                                                .bind(info.artist_id)
-                                                .execute(state.db.conn().await?.deref_mut())
-                                                .await?;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+async fn discogs_find_song(ctx: &UpdateContext<'_>) -> AppResult<Option<DiscogsSearchResult>> {
+    if let Some(discogs_token) = ctx.discogs_token {
+        let query = &[
+            ("artist", &unidecode(&ctx.info.artist_name)),
+            (
+                "release_title",
+                &ctx.info
+                    .album_title
+                    .as_ref()
+                    .map(|t| unidecode(t))
+                    .unwrap_or_default(),
+            ),
+            ("track", &unidecode(&ctx.info.song_title)),
+            ("token", &discogs_token),
+        ];
 
-                Ok(true)
-            } else {
-                Ok(false)
+        let search_response: Option<DiscogsSearchResponse> = get_discogs("search", query).await?;
+        match search_response.map(|mut r| r.results.pop()).flatten() {
+            Some(response) => Ok(Some(response)),
+            None => {
+                // Try again without the album title
+                let query = &[
+                    ("artist", &unidecode(&ctx.info.artist_name)),
+                    ("track", &unidecode(&ctx.info.song_title)),
+                    ("token", &discogs_token),
+                ];
+                let search_response: Option<DiscogsSearchResponse> =
+                    get_discogs("search", query).await?;
+                Ok(search_response.map(|mut r| r.results.pop()).flatten())
             }
         }
-        Err(_) => {
-            error!(
-                ?status_code,
-                ?json,
-                "Problem decoding Discogs JSON response"
-            );
-            Ok(true)
-        }
+    } else {
+        Ok(None)
     }
+}
+
+struct UpdateContext<'a> {
+    state: &'a TaskState,
+    discogs_token: Option<&'a String>,
+    info: &'a SongInfo,
 }
 
 #[derive(Debug)]
@@ -297,54 +376,9 @@ struct SongInfo {
     artist_name: String,
 }
 
-#[derive(Debug, Deserialize)]
-struct DiscogsSearchResponse {
-    results: Vec<DiscogsSearchResult>,
-}
-
-#[derive(Debug, Deserialize)]
-struct DiscogsSearchResult {
-    genre: Vec<String>,
-    cover_image: Option<String>,
-    thumb: Option<String>,
-    master_url: Option<String>,
-    resource_url: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct DiscogsMasterResponse {
-    images: Option<Vec<DiscogsImage>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct DiscogsResourceResponse {
-    artists: Option<Vec<DiscogsArtist>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct DiscogsArtist {
-    thumbnail_url: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct DiscogsImage {
-    resource_url: Option<String>,
-}
-
-static DISCOGS_CLIENT: once_cell::sync::OnceCell<ClientWithMiddleware> =
-    once_cell::sync::OnceCell::new();
-
-fn discogs_client() -> &'static ClientWithMiddleware {
-    DISCOGS_CLIENT.get_or_init(|| {
-        // Allow 1 request every 2 seconds, otherwise we'll get rate limited
-        let quota = Quota::with_period(Duration::from_secs(2)).unwrap();
-
-        let retry_policy = ExponentialBackoff::builder()
-            .retry_bounds(Duration::from_secs(20), Duration::from_secs(300))
-            .build_with_max_retries(3);
-        reqwest_client_builder()
-            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
-            .with(RateLimiterMiddleware::new(quota))
-            .build()
-    })
+#[derive(Debug)]
+struct DbSongInfo {
+    song: DbSong,
+    artist: DbArtist,
+    album: Option<DbAlbum>,
 }

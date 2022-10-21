@@ -29,6 +29,13 @@ CREATE TABLE folder_children
     foreign key (song_id) references songs(song_id)
 );
 
+CREATE TABLE folder_children_failed
+(
+    folder_child_id text primary key not null,
+    folder_id text not null,
+    path text not null
+);
+
 CREATE TABLE cover_art
 (
     cover_art_id text primary key not null,

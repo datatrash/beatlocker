@@ -8,8 +8,10 @@ use std::time::Duration;
 use tracing::warn;
 use uuid::Uuid;
 
+mod api_clients;
 mod rate_limiter;
 
+pub use api_clients::*;
 pub use rate_limiter::RateLimiterMiddleware;
 
 pub fn str_to_uuid(str: &str) -> Uuid {

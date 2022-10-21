@@ -202,6 +202,17 @@ impl Db {
         Ok(result)
     }
 
+    pub async fn find_failed_folder_child_by_path(&self, path: &str) -> AppResult<Option<Uuid>> {
+        let result =
+            sqlx::query("SELECT folder_child_id FROM folder_children_failed WHERE path = ?")
+                .bind(path)
+                .map(|row: SqliteRow| row.get("folder_child_id"))
+                .fetch_optional(self.conn().await?.deref_mut())
+                .await?;
+
+        Ok(result)
+    }
+
     pub async fn find_cover_art(&self, cover_art_id: Uuid) -> AppResult<Option<Uuid>> {
         let result = sqlx::query("SELECT cover_art_id FROM cover_art WHERE cover_art_id = ?")
             .bind(cover_art_id)
@@ -261,13 +272,37 @@ impl Db {
         Ok(id)
     }
 
+    pub async fn insert_failed_folder_child_if_not_exists(
+        &self,
+        child: &DbFailedFolderChild,
+    ) -> AppResult<Uuid> {
+        debug!(?child, "Trying to insert failed folder child");
+
+        let id = sqlx::query(
+            r#"
+        INSERT INTO folder_children_failed (folder_child_id, folder_id, path)
+        VALUES (?, ?, ?)
+        ON CONFLICT (folder_child_id) DO UPDATE set folder_child_id = folder_child_id
+        RETURNING folder_child_id
+        "#,
+        )
+        .bind(child.folder_child_id)
+        .bind(child.folder_id)
+        .bind(&child.path)
+        .map(|row| row.get("folder_child_id"))
+        .fetch_one(self.conn().await?.deref_mut())
+        .await?;
+
+        Ok(id)
+    }
+
     pub async fn insert_song_if_not_exists(&self, song: &DbSong) -> AppResult<Uuid> {
         debug!(?song, "Trying to insert song");
 
         let id = sqlx::query(
             r#"
-        INSERT INTO songs (song_id, title, created, date, cover_art_id, artist_id, album_id, content_type, suffix, size, track_number, disc_number, duration, bit_rate)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO songs (song_id, title, created, date, cover_art_id, artist_id, album_id, content_type, suffix, size, track_number, disc_number, duration, bit_rate, genre)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (song_id) DO UPDATE set song_id = song_id
         RETURNING song_id
         "#,
@@ -286,6 +321,7 @@ impl Db {
             .bind(song.disc_number)
             .bind(song.duration.map(|d| d.num_seconds()))
             .bind(song.bit_rate)
+            .bind(&song.genre)
             .map(|row| row.get("song_id"))
         .fetch_one(self.conn().await?.deref_mut())
         .await?;

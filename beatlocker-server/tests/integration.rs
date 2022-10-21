@@ -135,5 +135,14 @@ async fn integration_test() -> AppResult<()> {
     assert_eq!(res.status(), StatusCode::OK);
     insta::assert_snapshot!("getPlaylist.xml", res.xml_string().await);
 
+    // Import everything again and see if there are no duplicates
+    app.task_manager.send(app.import_all_folders()?).await?;
+    let res = client
+        .get("/rest/search3?f=json&query=\"\"&songCount=2")
+        .send()
+        .await;
+    assert_eq!(res.status(), StatusCode::OK);
+    insta::assert_json_snapshot!("search3.json", res.json::<serde_json::Value>().await);
+
     Ok(())
 }

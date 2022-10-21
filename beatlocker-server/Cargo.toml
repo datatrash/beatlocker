@@ -18,7 +18,7 @@ git-version = "0.3"
 governor = "0.5"
 heck = "0.4"
 hex = "0.4"
-http-cache-reqwest = { version = "0.5", default-features = false, features = ["manager-moka"] }
+http-cache-reqwest = { git = "https://github.com/sagacity/http-cache.git", branch = "bump-moka-version", default-features = false, features = ["manager-moka"] }
 itertools = "0.10"
 lewton = "0.10"
 md5 = "0.7"

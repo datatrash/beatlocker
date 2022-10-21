@@ -47,6 +47,7 @@ CREATE TABLE artists
     artist_id text primary key not null,
     name text not null,
     cover_art_id number,
+    musicbrainz_id number,
     foreign key (cover_art_id) references cover_art(cover_art_id)
 );
 
@@ -79,4 +80,10 @@ CREATE TABLE songs
     foreign key (cover_art_id) references cover_art(cover_art_id),
     foreign key (artist_id) references artists(artist_id),
     foreign key (album_id) references albums(album_id)
+);
+
+CREATE TABLE starred
+(
+    starred_id text primary key not null,
+    created datetime not null
 );

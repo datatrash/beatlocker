@@ -1,0 +1,10 @@
+---
+source: beatlocker-server/tests/integration.rs
+assertion_line: 128
+expression: res.xml_string().await
+---
+<subsonic-response status="ok" version="1.16.1" type="beatlocker" serverVersion="unknown">
+  <artistInfo2>
+    <biography>Richard Bona</biography>
+  </artistInfo2>
+</subsonic-response>

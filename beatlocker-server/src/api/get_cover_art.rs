@@ -1,7 +1,6 @@
 use crate::{AppResult, AppState};
 use axum::extract::{Query, State};
 use axum::http::header::{CONTENT_LENGTH, CONTENT_TYPE};
-use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use std::ops::DerefMut;
 
@@ -31,14 +30,14 @@ pub async fn get_cover_art(
         .fetch_optional(conn.deref_mut())
         .await?;
 
-    match data {
-        Some(data) => {
-            let headers = [
-                (CONTENT_TYPE, "image/jpeg"),
-                (CONTENT_LENGTH, &data.len().to_string()),
-            ];
-            Ok((headers, data).into_response())
-        }
-        None => Ok((StatusCode::NOT_FOUND, ()).into_response()),
-    }
+    let data = data.unwrap_or_else(|| include_bytes!("fallback_cover.jpg").to_vec());
+
+    let content_type = infer::get(&data)
+        .map(|ty| ty.mime_type())
+        .unwrap_or("application/octet-stream");
+    let headers = [
+        (CONTENT_TYPE, content_type),
+        (CONTENT_LENGTH, &data.len().to_string()),
+    ];
+    Ok((headers, data).into_response())
 }

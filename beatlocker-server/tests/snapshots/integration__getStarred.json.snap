@@ -1,0 +1,55 @@
+---
+source: beatlocker-server/tests/integration.rs
+assertion_line: 278
+expression: "res.json::<serde_json::Value>().await"
+---
+{
+  "subsonic-response": {
+    "serverVersion": "unknown",
+    "starred": {
+      "album": [
+        {
+          "duration": 6,
+          "id": "68f8b71b-d9b4-c77e-c7f1-e4af263bcd93",
+          "isDir": true,
+          "name": "Motorway OST",
+          "parent": "00000000-0000-0000-0000-000000000000",
+          "songCount": 1,
+          "starred": "2020-02-02T00:00:00Z",
+          "title": "Motorway OST"
+        }
+      ],
+      "artist": [
+        {
+          "albumCount": 1,
+          "id": "d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf",
+          "name": "Richard Bona",
+          "starred": "2020-02-02T00:00:00Z"
+        }
+      ],
+      "song": [
+        {
+          "album": "Motorway (Original Motion Picture Soundtrack)",
+          "albumId": "20d02390-2687-c407-2d28-d74f9fc6d5a1",
+          "artist": "Alex Gopher",
+          "artistId": "c2042f2f-fbda-64e4-ff33-62bad6853d99",
+          "contentType": "audio/flac",
+          "created": "2020-02-02T00:00:00Z",
+          "duration": 95,
+          "genre": "Unknown genre",
+          "id": "9fe0fb24-dabd-4464-258b-1ab72a28aa94",
+          "isDir": false,
+          "isVideo": false,
+          "parent": "7bb81eaa-b6a7-7f1d-7624-622193088eb6",
+          "size": 3502015,
+          "starred": "2020-02-02T00:00:00Z",
+          "suffix": "flac",
+          "title": "Radar Unit"
+        }
+      ]
+    },
+    "status": "ok",
+    "type": "beatlocker",
+    "version": "1.16.1"
+  }
+}

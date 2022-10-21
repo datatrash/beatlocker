@@ -1,0 +1,11 @@
+---
+source: beatlocker-server/tests/integration.rs
+assertion_line: 196
+expression: res.xml_string().await
+---
+<subsonic-response status="ok" version="1.16.1" type="beatlocker" serverVersion="unknown">
+  <genres>
+    <genre songCount="1" albumCount="1">World Music</genre>
+    <genre songCount="4" albumCount="3">[Unknown genre]</genre>
+  </genres>
+</subsonic-response>

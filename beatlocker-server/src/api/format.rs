@@ -71,7 +71,7 @@ where
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let app_state: State<AppState> = State::from_request_parts(parts, state).await?;
-        let server_version = app_state.server_version.clone();
+        let server_version = app_state.options.server_version.clone();
 
         #[derive(Deserialize)]
         struct FormatQuery {

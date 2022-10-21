@@ -101,6 +101,39 @@ pub struct CoverArtArchiveImage {
     pub image: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct LastFmArtistResponse {
+    pub artist: Option<LastFmArtist>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LastFmArtist {
+    pub url: Option<String>,
+    pub image: Vec<LastFmImage>,
+    pub bio: Option<LastFmBio>,
+}
+
+impl LastFmArtist {
+    pub fn image(&self, size: &str) -> Option<String> {
+        self.image
+            .iter()
+            .find(|i| i.size == size)
+            .map(|i| i.text.clone())
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LastFmImage {
+    #[serde(rename = "#text")]
+    pub text: String,
+    pub size: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LastFmBio {
+    pub summary: String,
+}
+
 static DISCOGS_CLIENT: once_cell::sync::OnceCell<ClientWithMiddleware> =
     once_cell::sync::OnceCell::new();
 
@@ -152,6 +185,21 @@ fn cover_art_archive_client() -> &'static ClientWithMiddleware {
             .with(RetryTransientMiddleware::new_with_policy(retry_policy))
             .with(default_cache_middleware())
             .with(RateLimiterMiddleware::new(quota))
+            .build()
+    })
+}
+
+static LASTFM_CLIENT: once_cell::sync::OnceCell<ClientWithMiddleware> =
+    once_cell::sync::OnceCell::new();
+
+fn lastfm_client() -> &'static ClientWithMiddleware {
+    LASTFM_CLIENT.get_or_init(|| {
+        let retry_policy = ExponentialBackoff::builder()
+            .retry_bounds(Duration::from_secs(20), Duration::from_secs(300))
+            .build_with_max_retries(3);
+        reqwest_client_builder()
+            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+            .with(default_cache_middleware())
             .build()
     })
 }
@@ -256,6 +304,38 @@ pub async fn get_cover_art_archive<T: for<'a> Deserialize<'a>>(
                 ?status_code,
                 ?json,
                 "Problem decoding Cover Art Archive JSON response"
+            );
+            debug!(?e);
+            Ok(None)
+        }
+    }
+}
+
+pub async fn get_lastfm<T: for<'a> Deserialize<'a>, Q: Serialize + Debug + ?Sized>(
+    query: &Q,
+) -> AppResult<Option<T>> {
+    debug!(?query, "Sending last.fm query");
+
+    let response = lastfm_client()
+        .request(Method::GET, "http://ws.audioscrobbler.com/2.0/")
+        .header(CONTENT_TYPE, "application/json")
+        .query(query)
+        .send()
+        .await?;
+
+    let status_code = response.status();
+    if status_code == StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+
+    let json = response.text().await?;
+    match serde_json::from_str::<T>(&json) {
+        Ok(response) => Ok(Some(response)),
+        Err(e) => {
+            error!(
+                ?status_code,
+                ?json,
+                "Problem decoding last.fm JSON response"
             );
             debug!(?e);
             Ok(None)

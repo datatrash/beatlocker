@@ -152,7 +152,12 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
     let metadata = metadata.unwrap();
 
     let album_id = if let Some(album_title) = &metadata.album {
-        let album_id = str_to_uuid(&format!("{}{}", album_title, metadata.artist()));
+        let artist = metadata
+            .album_artist
+            .clone()
+            .unwrap_or_else(|| metadata.artist().to_string());
+
+        let album_id = str_to_uuid(&format!("{}{}", album_title, artist));
         Some(
             state
                 .db
@@ -174,6 +179,7 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
                 artist_id: str_to_uuid(metadata.artist()),
                 name: metadata.artist().to_string(),
                 cover_art_id: None,
+                musicbrainz_id: None,
             })
             .await?,
     );
@@ -186,6 +192,7 @@ async fn import_file(state: Arc<TaskState>, path: &Path, folder_id: Uuid) -> App
                     artist_id: str_to_uuid(artist_name.as_str()),
                     name: artist_name.clone(),
                     cover_art_id: None,
+                    musicbrainz_id: None,
                 })
                 .await?,
         )

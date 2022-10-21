@@ -1,0 +1,27 @@
+---
+source: beatlocker-server/tests/integration.rs
+assertion_line: 193
+expression: "res.json::<serde_json::Value>().await"
+---
+{
+  "subsonic-response": {
+    "genres": {
+      "genre": [
+        {
+          "albumCount": 1,
+          "songCount": 1,
+          "value": "World Music"
+        },
+        {
+          "albumCount": 3,
+          "songCount": 4,
+          "value": "[Unknown genre]"
+        }
+      ]
+    },
+    "serverVersion": "unknown",
+    "status": "ok",
+    "type": "beatlocker",
+    "version": "1.16.1"
+  }
+}

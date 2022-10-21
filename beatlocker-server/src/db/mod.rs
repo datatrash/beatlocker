@@ -104,8 +104,8 @@ impl Db {
 
         let id = sqlx::query(
             r#"
-        INSERT INTO artists (artist_id, name, cover_art_id)
-        VALUES (?, ?, ?)
+        INSERT INTO artists (artist_id, name, cover_art_id, musicbrainz_id)
+        VALUES (?, ?, ?, ?)
         ON CONFLICT (artist_id) DO UPDATE set artist_id = artist_id
         RETURNING artist_id
         "#,
@@ -113,6 +113,7 @@ impl Db {
         .bind(artist.artist_id)
         .bind(&artist.name)
         .bind(artist.cover_art_id)
+        .bind(&artist.musicbrainz_id)
         .map(|row| row.get("artist_id"))
         .fetch_one(self.conn().await?.deref_mut())
         .await?;
@@ -136,32 +137,19 @@ impl Db {
     }
 
     pub async fn find_song_by_id(&self, id: Uuid) -> AppResult<Option<DbSong>> {
-        let result = sqlx::query("SELECT * FROM songs WHERE song_id = ?")
+        Ok(sqlx::query("SELECT * FROM songs WHERE song_id = ?")
             .bind(id)
-            .map(|row: SqliteRow| {
-                let duration: Option<u32> = row.get("duration");
-                DbSong {
-                    song_id: row.get("song_id"),
-                    title: row.get("title"),
-                    created: row.get("created"),
-                    date: row.get("date"),
-                    cover_art_id: row.get("cover_art_id"),
-                    artist_id: row.get("artist_id"),
-                    album_id: row.get("album_id"),
-                    content_type: row.get("content_type"),
-                    suffix: row.get("suffix"),
-                    size: row.get("size"),
-                    track_number: row.get("track_number"),
-                    disc_number: row.get("disc_number"),
-                    duration: duration.map(|secs| Duration::seconds(secs as i64)),
-                    bit_rate: row.get("bit_rate"),
-                    genre: row.get("genre"),
-                }
-            })
+            .map(map_row_to_db_song)
             .fetch_optional(self.conn().await?.deref_mut())
-            .await?;
+            .await?)
+    }
 
-        Ok(result)
+    pub async fn find_songs_by_album_id(&self, id: Uuid) -> AppResult<Vec<DbSong>> {
+        Ok(sqlx::query("SELECT * FROM songs WHERE album_id = ?")
+            .bind(id)
+            .map(map_row_to_db_song)
+            .fetch_all(self.conn().await?.deref_mut())
+            .await?)
     }
 
     pub async fn find_artist_by_id(&self, id: Uuid) -> AppResult<Option<DbArtist>> {
@@ -171,6 +159,7 @@ impl Db {
                 artist_id: row.get("artist_id"),
                 name: row.get("name"),
                 cover_art_id: row.get("cover_art_id"),
+                musicbrainz_id: row.get("musicbrainz_id"),
             })
             .fetch_optional(self.conn().await?.deref_mut())
             .await?;
@@ -348,6 +337,27 @@ impl Db {
         .await?;
 
         Ok(id)
+    }
+}
+
+fn map_row_to_db_song(row: SqliteRow) -> DbSong {
+    let duration: Option<u32> = row.get("duration");
+    DbSong {
+        song_id: row.get("song_id"),
+        title: row.get("title"),
+        created: row.get("created"),
+        date: row.get("date"),
+        cover_art_id: row.get("cover_art_id"),
+        artist_id: row.get("artist_id"),
+        album_id: row.get("album_id"),
+        content_type: row.get("content_type"),
+        suffix: row.get("suffix"),
+        size: row.get("size"),
+        track_number: row.get("track_number"),
+        disc_number: row.get("disc_number"),
+        duration: duration.map(|secs| Duration::seconds(secs as i64)),
+        bit_rate: row.get("bit_rate"),
+        genre: row.get("genre"),
     }
 }
 

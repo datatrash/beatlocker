@@ -6,4 +6,7 @@
 
 ## App compatibility
 
-Beatlocker is compatible with Symfonium.
+Beatlocker has been tested (and found mostly working!) with:
+* [Airsonic-refix](https://github.com/tamland/airsonic-refix)
+* [D-Sub](https://github.com/daneren2005/Subsonic)
+* [Symfonium](https://symfonium.app)

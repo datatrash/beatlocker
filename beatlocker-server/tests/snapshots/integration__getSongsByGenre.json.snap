@@ -1,0 +1,36 @@
+---
+source: beatlocker-server/tests/integration.rs
+assertion_line: 204
+expression: "res.json::<serde_json::Value>().await"
+---
+{
+  "subsonic-response": {
+    "serverVersion": "unknown",
+    "songsByGenre": {
+      "song": [
+        {
+          "album": "Tiki",
+          "albumId": "68bc272d-d36b-9191-b815-02627be8ea65",
+          "artist": "Richard Bona",
+          "artistId": "d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf",
+          "contentType": "audio/mp3",
+          "created": "2020-02-02T00:00:00Z",
+          "duration": 27,
+          "genre": "World Music",
+          "id": "72315dd4-d365-8f1e-9cb7-c0c11f680af1",
+          "isDir": false,
+          "isVideo": false,
+          "parent": "75a22ef8-9597-4c55-9be1-097d94babc31",
+          "size": 765952,
+          "suffix": "mp3",
+          "title": "Akwa Samba Yaya",
+          "track": 2,
+          "year": 2021
+        }
+      ]
+    },
+    "status": "ok",
+    "type": "beatlocker",
+    "version": "1.16.1"
+  }
+}

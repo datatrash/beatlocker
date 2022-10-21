@@ -30,7 +30,7 @@ pub struct SongMetadata {
 
 impl SongMetadata {
     pub fn artist(&self) -> &str {
-        self.artist.as_ref().map(|s| s.as_str()).unwrap()
+        self.artist.as_deref().unwrap()
     }
 
     pub fn is_valid(&self) -> bool {
@@ -61,12 +61,12 @@ pub fn extract_metadata(
         // Probe the media source.
         let mut probed = symphonia::default::get_probe()
             .format(&hint, mss, &fmt_opts, &meta_opts)
-            .or_else(|_| Err(anyhow!("Unsupported format")).into())?;
+            .map_err(|_| anyhow!("Unsupported format"))?;
 
         let mut format = probed.format;
         let track = format
             .default_track()
-            .ok_or::<AppError>(anyhow!("No supported audio tracks").into())?;
+            .ok_or_else(|| AppError(anyhow!("No supported audio tracks")))?;
         let codec_params = track.codec_params.clone();
         let content_type = match &codec_params.codec {
             _ if codec_params.codec == CODEC_TYPE_VORBIS => Some("audio/ogg".to_string()),
@@ -87,14 +87,11 @@ pub fn extract_metadata(
 
         let metadata = SongMetadata {
             bit_rate,
-            duration: codec_params
-                .time_base
-                .map(|tb| {
-                    codec_params
-                        .n_frames
-                        .map(|nf| Duration::seconds(tb.calc_time(nf).seconds as i64))
-                })
-                .flatten(),
+            duration: codec_params.time_base.and_then(|tb| {
+                codec_params
+                    .n_frames
+                    .map(|nf| Duration::seconds(tb.calc_time(nf).seconds as i64))
+            }),
             content_type,
             suffix,
             ..Default::default()
@@ -103,8 +100,7 @@ pub fn extract_metadata(
         let probed_metadata = probed
             .metadata
             .get()
-            .map(|mut m| m.skip_to_latest().cloned())
-            .flatten();
+            .and_then(|mut m| m.skip_to_latest().cloned());
         let format_metadata = format.metadata().skip_to_latest().cloned();
 
         if let Some(rev) = format_metadata.or(probed_metadata) {
@@ -121,7 +117,8 @@ pub fn extract_metadata(
                 album_artist: get_value(StandardTagKey::AlbumArtist)
                     .or_else(|| get_value(StandardTagKey::Artist)),
                 date: get_value(StandardTagKey::Date)
-                    .map(|s| {
+                    .or_else(|| get_value(StandardTagKey::ReleaseDate))
+                    .and_then(|s| {
                         DateTime::parse_from_rfc3339(&s)
                             .ok()
                             .map(|dt| dt.with_timezone(&Utc))
@@ -132,22 +129,16 @@ pub fn extract_metadata(
                                     .map(|dt| dt.and_local_timezone(Utc).unwrap())
                             })
                             .or_else(|| {
-                                u32::from_str_radix(&s, 10)
+                                s.parse::<u32>()
                                     .ok()
-                                    .map(|year| DateTime::default().with_year(year as i32))
-                                    .flatten()
+                                    .and_then(|year| DateTime::default().with_year(year as i32))
                             })
-                    })
-                    .flatten(),
-                track_number: get_value(StandardTagKey::TrackNumber)
-                    .map(|t| u32::from_str_radix(&t, 10).ok())
-                    .flatten(),
-                disc_number: get_value(StandardTagKey::DiscNumber)
-                    .map(|t| u32::from_str_radix(&t, 10).ok())
-                    .flatten(),
+                    }),
+                track_number: get_value(StandardTagKey::TrackNumber).and_then(|t| t.parse().ok()),
+                disc_number: get_value(StandardTagKey::DiscNumber).and_then(|t| t.parse().ok()),
                 genre: get_value(StandardTagKey::Genre).map(|genre_id| {
                     // id is potentially in format "(181)"
-                    match u8::from_str_radix(&genre_id[1..genre_id.len() - 1], 10).ok() {
+                    match genre_id[1..genre_id.len() - 1].parse::<u8>().ok() {
                         Some(id) => match id3v1::util::genre_name(id).map(|g| g.to_string()) {
                             Some(genre) => genre,
                             None => genre_id,

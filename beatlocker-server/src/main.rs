@@ -7,7 +7,7 @@ use governor::{Jitter, Quota, RateLimiter};
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::time::Duration;
-use tokio::{signal, task};
+use tokio::signal;
 use tracing::{info, warn};
 
 #[derive(Parser)]
@@ -28,6 +28,10 @@ struct Cli {
     /// Discogs API token
     #[arg(long, env = "BL_DISCOGS_TOKEN")]
     discogs_token: Option<String>,
+
+    /// last.fm API key
+    #[arg(long, env = "BL_LASTFM_API_KEY")]
+    lastfm_api_key: Option<String>,
 
     /// Run fully in-memory (no SQLite database will be created)
     #[arg(long)]
@@ -65,6 +69,7 @@ async fn main() -> AppResult<()> {
         server_version: SERVER_VERSION.to_string(),
         import_external_metadata: true,
         discogs_token: cli.discogs_token,
+        lastfm_api_key: cli.lastfm_api_key,
         subsonic_auth,
         ..Default::default()
     };
@@ -89,7 +94,7 @@ async fn main() -> AppResult<()> {
         app.import_external_metadata()?,
         app.optimize_database()?,
     ];
-    let join = task::spawn(async move {
+    let join = tokio::spawn(async move {
         let lim = RateLimiter::direct(Quota::per_hour(NonZeroU32::new(1u32).unwrap()));
         let jitter = Jitter::new(
             Duration::from_secs(60 * 60 * 4),

@@ -1,0 +1,12 @@
+---
+source: beatlocker-server/tests/integration.rs
+assertion_line: 178
+expression: res.xml_string().await
+---
+<subsonic-response status="ok" version="1.16.1" type="beatlocker" serverVersion="unknown">
+  <artist id="d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf" name="Richard Bona" albumCount="1">
+    <album id="68bc272d-d36b-9191-b815-02627be8ea65" name="Tiki" title="Tiki" songCount="2" duration="33" artist="Richard Bona" artistId="d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf"/>
+    <song id="72315dd4-d365-8f1e-9cb7-c0c11f680af1" parent="75a22ef8-9597-4c55-9be1-097d94babc31" isDir="false" created="2020-02-02T00:00:00Z" title="Akwa Samba Yaya" album="Tiki" artist="Richard Bona" track="2" year="2021" size="765952" contentType="audio/mp3" suffix="mp3" duration="27" albumId="68bc272d-d36b-9191-b815-02627be8ea65" artistId="d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf" isVideo="false" genre="World Music"/>
+    <song id="1568a84c-22cd-2176-ab86-c69194a9de16" parent="75a22ef8-9597-4c55-9be1-097d94babc31" isDir="false" created="2020-02-02T00:00:00Z" title="Ba Senge" album="Tiki" artist="Richard Bona" track="1" year="2021" size="105378" contentType="audio/ogg" suffix="ogg" duration="6" discNumber="1" albumId="68bc272d-d36b-9191-b815-02627be8ea65" artistId="d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf" isVideo="false" genre="Unknown genre"/>
+  </artist>
+</subsonic-response>

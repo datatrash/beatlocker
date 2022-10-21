@@ -1,0 +1,34 @@
+---
+source: beatlocker-server/tests/integration.rs
+expression: "res.json::<serde_json::Value>().await"
+---
+{
+  "subsonic-response": {
+    "albumList2": {
+      "album": [
+        {
+          "artist": "Alex Gopher",
+          "artistId": "c2042f2f-fbda-64e4-ff33-62bad6853d99",
+          "duration": 101,
+          "id": "20d02390-2687-c407-2d28-d74f9fc6d5a1",
+          "name": "Motorway (Original Motion Picture Soundtrack)",
+          "songCount": 2,
+          "title": "Motorway (Original Motion Picture Soundtrack)"
+        },
+        {
+          "artist": "Richard Bona",
+          "artistId": "d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf",
+          "duration": 33,
+          "id": "68bc272d-d36b-9191-b815-02627be8ea65",
+          "name": "Tiki",
+          "songCount": 2,
+          "title": "Tiki"
+        }
+      ]
+    },
+    "serverVersion": "unknown",
+    "status": "ok",
+    "type": "beatlocker",
+    "version": "1.16.1"
+  }
+}

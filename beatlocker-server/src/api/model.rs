@@ -2,6 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub const UNKNOWN_GENRE: &str = "[Unknown genre]";
+
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename = "song", rename_all = "camelCase")]
 pub struct SubsonicSong {
@@ -43,6 +45,8 @@ pub struct SubsonicSong {
     pub is_video: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub genre: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub starred: Option<DateTime<Utc>>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
@@ -53,14 +57,22 @@ pub struct SubsonicArtist {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cover_art: Option<Uuid>,
     pub album_count: u32,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub album: Vec<SubsonicAlbum>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub song: Vec<SubsonicSong>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub starred: Option<DateTime<Utc>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename = "album", rename_all = "camelCase")]
 pub struct SubsonicAlbum {
     pub id: Uuid,
-    pub parent: Uuid,
-    pub is_dir: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_dir: Option<bool>,
     pub name: String,
     pub title: String,
     pub song_count: u32,
@@ -71,6 +83,29 @@ pub struct SubsonicAlbum {
     pub artist_id: Option<Uuid>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cover_art: Option<Uuid>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub song: Vec<SubsonicSong>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub starred: Option<DateTime<Utc>>,
+}
+
+impl Default for SubsonicAlbum {
+    fn default() -> Self {
+        Self {
+            id: Default::default(),
+            parent: None,
+            is_dir: None,
+            name: "".to_string(),
+            title: "".to_string(),
+            song_count: 0,
+            duration: 0,
+            artist: None,
+            artist_id: None,
+            cover_art: None,
+            song: vec![],
+            starred: None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
@@ -101,3 +136,6 @@ pub struct SubsonicChildDirectory {
     pub song_count: Option<usize>,
     pub is_video: bool,
 }
+
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+pub struct XmlStringWrapper(pub String);

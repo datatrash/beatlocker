@@ -16,7 +16,7 @@ use std::thread::JoinHandle;
 use tokio::sync::{mpsc, oneshot, Barrier};
 use tokio::task::JoinSet;
 use tokio::{runtime, task};
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info};
 use uuid::Uuid;
 
 pub struct TaskManager {
@@ -97,7 +97,6 @@ impl TaskManager {
                     tokio::select! {
                         Some(envelope) = message_rx.recv() => {
                             let message = envelope.message;
-                            trace!(?message);
                             match message {
                                 TaskMessage::Ping => {
                                     envelope.reply_tx.send(TaskReply::Pong).unwrap();

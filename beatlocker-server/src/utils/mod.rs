@@ -14,6 +14,11 @@ mod rate_limiter;
 pub use api_clients::*;
 pub use rate_limiter::RateLimiterMiddleware;
 
+#[cfg(test)]
+mod test_utils;
+#[cfg(test)]
+pub use test_utils::*;
+
 pub fn str_to_uuid(str: &str) -> Uuid {
     let mut h = SipHasher::new();
     str.hash(&mut h);

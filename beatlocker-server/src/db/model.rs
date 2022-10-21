@@ -39,6 +39,7 @@ pub struct DbArtist {
     pub artist_id: Uuid,
     pub name: String,
     pub cover_art_id: Option<Uuid>,
+    pub musicbrainz_id: Option<String>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]

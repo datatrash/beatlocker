@@ -87,6 +87,11 @@ pub async fn import_external_metadata(state: Arc<TaskState>) -> AppResult<()> {
 
                 state.db.update_last_updated(info.folder_child_id).await?;
                 wrap_err(
+                    update_artist(&ctx, get_db_song_info(&state, &info).await?),
+                    || (),
+                )
+                .await;
+                wrap_err(
                     update_genre(&ctx, get_db_song_info(&state, &info).await?),
                     || (),
                 )
@@ -114,6 +119,25 @@ pub async fn import_external_metadata(state: Arc<TaskState>) -> AppResult<()> {
         }
 
         await_join_set(set).await?;
+    }
+
+    Ok(())
+}
+
+async fn update_artist(ctx: &UpdateContext<'_>, db: DbSongInfo) -> AppResult<()> {
+    if db.artist.musicbrainz_id.is_some() {
+        return Ok(());
+    }
+
+    if let Some(mut mb_song) = musicbrainz_find_song(ctx.info).await? {
+        if let Some(mb_arid) = mb_song.artist_credit.pop().map(|c| c.artist.id) {
+            debug!(ctx.info.artist_name, mb_arid, "Updating artist information");
+            sqlx::query("UPDATE artists SET musicbrainz_id = ? WHERE artist_id = ?")
+                .bind(mb_arid)
+                .bind(ctx.info.artist_id)
+                .execute(ctx.state.db.conn().await?.deref_mut())
+                .await?;
+        }
     }
 
     Ok(())
@@ -166,7 +190,7 @@ async fn update_song_cover_art(ctx: &UpdateContext<'_>, db: DbSongInfo) -> AppRe
             let images: Option<CoverArtArchiveImagesResponse> =
                 get_cover_art_archive("release", &release.id).await?;
             if let Some(mut images) = images {
-                url = images.images.pop().map(|i| i.image).flatten();
+                url = images.images.pop().and_then(|i| i.image);
             }
         }
     }
@@ -210,7 +234,7 @@ async fn update_album_cover_art(ctx: &UpdateContext<'_>, db: DbSongInfo) -> AppR
                             .send()
                             .await?;
                         let mut master = response.json::<DiscogsMasterResponse>().await?;
-                        url = master.images.pop().map(|u| u.resource_url).flatten();
+                        url = master.images.pop().and_then(|u| u.resource_url);
                     }
                 }
             }
@@ -312,14 +336,14 @@ async fn musicbrainz_find_song(info: &SongInfo) -> AppResult<Option<MusicbrainzR
 
     let response: Option<MusicbrainzRecordingsResponse> =
         get_musicbrainz("recording", &query).await?;
-    Ok(response.map(|mut r| r.recordings.pop()).flatten())
+    Ok(response.and_then(|mut r| r.recordings.pop()))
 }
 
 async fn musicbrainz_find_artist(artist_id: String) -> AppResult<Option<MusicbrainzArtist>> {
     let query = &[("fmt", "json"), ("query", &format!("arid:{}", artist_id))];
     let artists_response: Option<MusicbrainzArtistsResponse> =
         get_musicbrainz("artist", &query).await?;
-    Ok(artists_response.map(|mut r| r.artists.pop()).flatten())
+    Ok(artists_response.and_then(|mut r| r.artists.pop()))
 }
 
 async fn discogs_find_song(ctx: &UpdateContext<'_>) -> AppResult<Option<DiscogsSearchResult>> {
@@ -335,22 +359,22 @@ async fn discogs_find_song(ctx: &UpdateContext<'_>) -> AppResult<Option<DiscogsS
                     .unwrap_or_default(),
             ),
             ("track", &unidecode(&ctx.info.song_title)),
-            ("token", &discogs_token),
+            ("token", discogs_token),
         ];
 
         let search_response: Option<DiscogsSearchResponse> = get_discogs("search", query).await?;
-        match search_response.map(|mut r| r.results.pop()).flatten() {
+        match search_response.and_then(|mut r| r.results.pop()) {
             Some(response) => Ok(Some(response)),
             None => {
                 // Try again without the album title
                 let query = &[
                     ("artist", &unidecode(&ctx.info.artist_name)),
                     ("track", &unidecode(&ctx.info.song_title)),
-                    ("token", &discogs_token),
+                    ("token", discogs_token),
                 ];
                 let search_response: Option<DiscogsSearchResponse> =
                     get_discogs("search", query).await?;
-                Ok(search_response.map(|mut r| r.results.pop()).flatten())
+                Ok(search_response.and_then(|mut r| r.results.pop()))
             }
         }
     } else {

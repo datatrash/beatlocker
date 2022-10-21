@@ -300,6 +300,8 @@ dependencies = [
  "http",
  "mime",
  "pin-project-lite",
+ "serde",
+ "serde_html_form",
  "tokio",
  "tokio-util",
  "tower",
@@ -344,6 +346,8 @@ dependencies = [
  "hex 0.4.3",
  "http-cache-reqwest",
  "hyper",
+ "id3",
+ "infer",
  "insta",
  "itertools",
  "lewton",
@@ -360,6 +364,7 @@ dependencies = [
  "symphonia",
  "symphonia-metadata",
  "task-local-extensions",
+ "tempdir",
  "tokio",
  "tokio-stream",
  "tokio-util",
@@ -562,6 +567,17 @@ name = "cc"
 version = "1.0.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2fff2a6927b3bb87f9595d67196a70493f627687a71d87a0d692242c33f58c11"
+
+[[package]]
+name = "cfb"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d38f2da7a0a2c4ccf0065be06397cc26a81f4e528be095826eee9d4adbb8c60f"
+dependencies = [
+ "byteorder",
+ "fnv",
+ "uuid",
+]
 
 [[package]]
 name = "cfg-if"
@@ -974,6 +990,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuchsia-cprng"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
+
+[[package]]
 name = "futures"
 version = "0.3.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1178,7 +1200,7 @@ dependencies = [
  "nonzero_ext",
  "parking_lot 0.12.1",
  "quanta 0.9.3",
- "rand",
+ "rand 0.8.5",
  "smallvec",
 ]
 
@@ -1398,6 +1420,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "id3"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2cf589c9dddff0ea50b6361b8635720d721d4fbca02861f806add85afef74a0"
+dependencies = [
+ "bitflags",
+ "byteorder",
+ "flate2",
+]
+
+[[package]]
 name = "idna"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1415,6 +1448,15 @@ checksum = "10a35a97730320ffe8e2d410b5d3b69279b98d2c14bdb8b70ea89ecf7888d41e"
 dependencies = [
  "autocfg",
  "hashbrown",
+]
+
+[[package]]
+name = "infer"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f178e61cdbfe084aa75a2f4f7a25a5bb09701a47ae1753608f194b15783c937a"
+dependencies = [
+ "cfb",
 ]
 
 [[package]]
@@ -2083,13 +2125,26 @@ dependencies = [
 
 [[package]]
 name = "rand"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "552840b97013b1a26992c11eac34bdd778e464601a4c2054b5f0bff7c6761293"
+dependencies = [
+ "fuchsia-cprng",
+ "libc",
+ "rand_core 0.3.1",
+ "rdrand",
+ "winapi",
+]
+
+[[package]]
+name = "rand"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
 dependencies = [
  "libc",
  "rand_chacha",
- "rand_core",
+ "rand_core 0.6.4",
 ]
 
 [[package]]
@@ -2099,8 +2154,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6c10a63a0fa32252be49d21e7709d4d4baf8d231c2dbce1eaa8141b9b127d88"
 dependencies = [
  "ppv-lite86",
- "rand_core",
+ "rand_core 0.6.4",
 ]
+
+[[package]]
+name = "rand_core"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a6fdeb83b075e8266dcc8762c22776f6877a63111121f5f8c7411e5be7eed4b"
+dependencies = [
+ "rand_core 0.4.2",
+]
+
+[[package]]
+name = "rand_core"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c33a3c44ca05fa6f1807d8e6743f3824e8509beca625669633be0acbdf509dc"
 
 [[package]]
 name = "rand_core"
@@ -2118,6 +2188,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6823ea29436221176fe662da99998ad3b4db2c7f31e7b6f5fe43adccd6320bb"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "rdrand"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "678054eb77286b51581ba43620cc911abf02758c91f93f479767aed0f90458b2"
+dependencies = [
+ "rand_core 0.3.1",
 ]
 
 [[package]]
@@ -2263,7 +2342,7 @@ checksum = "47f9e19b18c6cdd796cc70aea8a9ea5ee7b813be611c6589e3624fcdbfd05f9d"
 dependencies = [
  "anyhow",
  "chrono",
- "rand",
+ "rand 0.8.5",
 ]
 
 [[package]]
@@ -2402,6 +2481,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "serde_html_form"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3312ac3bf56e70cb7082a85db89d127940607b6acf39bd537cc06c8212124927"
+dependencies = [
+ "form_urlencoded",
+ "indexmap",
+ "itoa",
+ "ryu",
+ "serde",
 ]
 
 [[package]]
@@ -2902,6 +2994,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tempdir"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15f2b5fb00ccdf689e0149d1b1b3c03fead81c2b37735d812fa8bddbbf41b6d8"
+dependencies = [
+ "rand 0.4.6",
+ "remove_dir_all",
+]
+
+[[package]]
 name = "tempfile"
 version = "3.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3291,7 +3393,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "feb41e78f93363bb2df8b0e86a2ca30eed7806ea16ea0c790d757cf93f79be83"
 dependencies = [
  "getrandom",
- "rand",
+ "rand 0.8.5",
  "serde",
 ]
 

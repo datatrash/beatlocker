@@ -6,7 +6,7 @@ use axum::response::{IntoResponse, Response};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqliteRow;
-use sqlx::Row;
+use sqlx::{QueryBuilder, Row};
 use std::ops::DerefMut;
 
 use uuid::Uuid;
@@ -14,7 +14,7 @@ use uuid::Uuid;
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetIndexesParams {
-    music_folder_id: Uuid,
+    music_folder_id: Option<Uuid>,
 }
 
 pub async fn get_indexes(
@@ -24,8 +24,13 @@ pub async fn get_indexes(
 ) -> AppResult<Response> {
     let mut conn = state.db.conn().await?;
 
-    let folders = sqlx::query("SELECT * FROM folders WHERE parent_id = ?")
-        .bind(params.music_folder_id)
+    let mut builder = QueryBuilder::new("SELECT * FROM folders");
+    match params.music_folder_id {
+        Some(id) => builder.push(" WHERE parent_id = ").push_bind(id),
+        None => builder.push(" WHERE parent_id IS NOT NULL"),
+    };
+    let folders = builder
+        .build()
         .map(|row: SqliteRow| {
             let id: Uuid = row.get("folder_id");
             IndexArtist {

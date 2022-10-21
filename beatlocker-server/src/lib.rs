@@ -42,6 +42,7 @@ pub struct ServerOptions {
     pub import_external_metadata: bool,
     pub server_version: String,
     pub discogs_token: Option<String>,
+    pub lastfm_api_key: Option<String>,
     pub now_provider: Arc<Box<dyn Fn() -> DateTime<Utc> + Send + Sync>>,
     pub subsonic_auth: SubsonicAuth,
 }
@@ -63,6 +64,7 @@ impl Default for ServerOptions {
             server_version: "unknown".to_string(),
             import_external_metadata: false,
             discogs_token: None,
+            lastfm_api_key: None,
             now_provider: Arc::new(Box::new(Utc::now)),
             subsonic_auth: SubsonicAuth::None,
         }
@@ -84,14 +86,14 @@ pub enum SubsonicAuth {
 
 #[derive(Clone)]
 pub struct AppState {
-    pub server_version: String,
+    pub options: ServerOptions,
     pub db: Arc<Db>,
 }
 
 impl App {
     pub async fn new(options: ServerOptions) -> AppResult<Self> {
         let state = Arc::new(AppState {
-            server_version: options.server_version.clone(),
+            options: options.clone(),
             db: Arc::new(Db::new(&options.database)?),
         });
         state.db.migrate().await?;
@@ -101,12 +103,28 @@ impl App {
         let rest_routes = Router::with_state_arc(state.clone())
             .route("/ping", get(ping))
             .route("/ping.view", get(ping))
+            .route("/getAlbum", get(get_album))
+            .route("/getAlbum.view", get(get_album))
             .route("/getAlbumList", get(get_album_list))
             .route("/getAlbumList.view", get(get_album_list))
+            .route("/getAlbumList2", get(get_album_list2))
+            .route("/getAlbumList2.view", get(get_album_list2))
+            .route("/getArtist", get(get_artist))
+            .route("/getArtist.view", get(get_artist))
+            .route("/getArtistInfo", get(get_artist_info))
+            .route("/getArtistInfo.view", get(get_artist_info))
+            .route("/getArtistInfo2", get(get_artist_info2))
+            .route("/getArtistInfo2.view", get(get_artist_info2))
+            .route("/getArtists", get(get_artists))
+            .route("/getArtists.view", get(get_artists))
             .route("/getCoverArt", get(get_cover_art))
             .route("/getCoverArt.view", get(get_cover_art))
+            .route("/getGenres", get(get_genres))
+            .route("/getGenres.view", get(get_genres))
             .route("/getIndexes", get(get_indexes))
             .route("/getIndexes.view", get(get_indexes))
+            .route("/getInternetRadioStations", get(ping))
+            .route("/getInternetRadioStations.view", get(ping))
             .route("/getLicense", get(get_license))
             .route("/getLicense.view", get(get_license))
             .route("/getMusicDirectory", get(get_music_directory))
@@ -117,12 +135,26 @@ impl App {
             .route("/getPlaylist.view", get(get_playlist))
             .route("/getPlaylists", get(get_playlists))
             .route("/getPlaylists.view", get(get_playlists))
+            .route("/getPodcasts", get(ping))
+            .route("/getPodcasts.view", get(ping))
+            .route("/getRandomSongs", get(get_random_songs))
+            .route("/getRandomSongs.view", get(get_random_songs))
+            .route("/getSongsByGenre", get(get_songs_by_genre))
+            .route("/getSongsByGenre.view", get(get_songs_by_genre))
+            .route("/getStarred", get(get_starred))
+            .route("/getStarred.view", get(get_starred))
+            .route("/getStarred2", get(get_starred2))
+            .route("/getStarred2.view", get(get_starred2))
             .route("/scrobble", get(ping))
             .route("/scrobble.view", get(ping))
             .route("/search3", get(search3))
             .route("/search3.view", get(search3))
+            .route("/star", get(star))
+            .route("/star.view", get(star))
             .route("/stream", get(stream))
             .route("/stream.view", get(stream))
+            .route("/unstar", get(unstar))
+            .route("/unstar.view", get(unstar))
             .route_layer(from_extractor_with_state::<RequireAuth, SubsonicAuth>(
                 options.subsonic_auth.clone(),
             ));
@@ -175,7 +207,7 @@ impl App {
 pub fn enable_default_tracing() {
     let filter = EnvFilter::try_from_env("BL_LOG")
         .unwrap_or_else(|_| EnvFilter::new("beatlocker_server=info"))
-        .add_directive(LevelFilter::WARN.into())
+        .add_directive(LevelFilter::DEBUG.into())
         .add_directive("reqwest_retry=error".parse().unwrap());
 
     let subscriber = FmtSubscriber::builder()

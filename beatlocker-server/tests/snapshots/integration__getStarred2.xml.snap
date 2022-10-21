@@ -1,0 +1,12 @@
+---
+source: beatlocker-server/tests/integration.rs
+assertion_line: 312
+expression: res.xml_string().await
+---
+<subsonic-response status="ok" version="1.16.1" type="beatlocker" serverVersion="unknown">
+  <starred2>
+    <album id="20d02390-2687-c407-2d28-d74f9fc6d5a1" name="Motorway (Original Motion Picture Soundtrack)" title="Motorway (Original Motion Picture Soundtrack)" songCount="2" duration="101" artist="Alex Gopher" artistId="c2042f2f-fbda-64e4-ff33-62bad6853d99" starred="2020-02-02T00:00:00Z"/>
+    <artist id="d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf" name="Richard Bona" albumCount="1" starred="2020-02-02T00:00:00Z"/>
+    <song id="9fe0fb24-dabd-4464-258b-1ab72a28aa94" parent="7bb81eaa-b6a7-7f1d-7624-622193088eb6" isDir="false" created="2020-02-02T00:00:00Z" title="Radar Unit" album="Motorway (Original Motion Picture Soundtrack)" artist="Alex Gopher" size="3502015" contentType="audio/flac" suffix="flac" duration="95" albumId="20d02390-2687-c407-2d28-d74f9fc6d5a1" artistId="c2042f2f-fbda-64e4-ff33-62bad6853d99" isVideo="false" genre="Unknown genre" starred="2020-02-02T00:00:00Z"/>
+  </starred2>
+</subsonic-response>

@@ -1,0 +1,16 @@
+---
+source: beatlocker-server/tests/integration.rs
+assertion_line: 108
+expression: "res.json::<serde_json::Value>().await"
+---
+{
+  "subsonic-response": {
+    "artistInfo": {
+      "biography": "Richard Bona"
+    },
+    "serverVersion": "unknown",
+    "status": "ok",
+    "type": "beatlocker",
+    "version": "1.16.1"
+  }
+}

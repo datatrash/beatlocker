@@ -207,7 +207,7 @@ impl App {
 pub fn enable_default_tracing() {
     let filter = EnvFilter::try_from_env("BL_LOG")
         .unwrap_or_else(|_| EnvFilter::new("beatlocker_server=info"))
-        .add_directive(LevelFilter::DEBUG.into())
+        .add_directive(LevelFilter::WARN.into())
         .add_directive("reqwest_retry=error".parse().unwrap());
 
     let subscriber = FmtSubscriber::builder()

@@ -7,13 +7,15 @@ edition = "2021"
 anyhow = "1"
 async-recursion = "1"
 atty = "0.2"
-axum = { git = "https://github.com/tokio-rs/axum.git" }
+axum = { git = "https://github.com/tokio-rs/axum.git", features = ["headers"] }
 axum-extra = { git = "https://github.com/tokio-rs/axum.git", features = ["async-read-body", "query"] }
 chrono = { version = "0.4", features = ["clock", "serde"] }
 clap = { version = "4", features = ["derive", "env"] }
 const_format = "0.2"
 deadpool = "0.9"
 distance = "0.4"
+futures = "0.3"
+headers = "0.3"
 git-version = "0.3"
 governor = "0.5"
 heck = "0.4"

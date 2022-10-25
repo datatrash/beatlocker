@@ -3,11 +3,13 @@ use beatlocker_server::{
     SERVER_VERSION,
 };
 use clap::Parser;
+use futures::FutureExt;
 use governor::{Jitter, Quota, RateLimiter};
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::signal;
+use tokio::time::sleep;
 use tracing::{info, warn};
 
 #[derive(Parser)]
@@ -82,9 +84,10 @@ async fn main() -> AppResult<()> {
     }
 
     let app = App::new(options).await?;
+    let shutdown_signal = shutdown_signal().shared();
     let server = axum::Server::bind(&"0.0.0.0:2222".parse().unwrap())
         .serve(app.app.clone().into_make_service())
-        .with_graceful_shutdown(shutdown_signal());
+        .with_graceful_shutdown(shutdown_signal.clone());
 
     info!("Server started");
 
@@ -109,7 +112,13 @@ async fn main() -> AppResult<()> {
         }
     });
 
-    server.await?;
+    let delayed_shutdown = shutdown_signal.then(|_| async move {
+        sleep(Duration::from_secs(5)).await;
+    });
+    tokio::select! {
+        _ = server => {},
+        _ = delayed_shutdown => {}
+    }
 
     app.task_manager.shutdown().await?;
     join.abort();

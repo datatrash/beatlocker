@@ -1,9 +1,13 @@
 use crate::SubsonicAuth;
 use crate::SubsonicAuth::UsernamePassword;
-use axum::async_trait;
 use axum::extract::{FromRequestParts, Query};
 use axum::http::request::Parts;
+use axum::{async_trait, RequestPartsExt, TypedHeader};
+use headers::authorization::Basic;
 use serde::Deserialize;
+use std::time::Duration;
+use tokio::sync::Mutex;
+use tokio::time::sleep;
 
 pub struct RequireAuth;
 
@@ -13,6 +17,12 @@ struct AuthQuery {
     p: Option<String>,
     t: Option<String>,
     s: Option<String>,
+}
+
+static AUTH_MUTEX: once_cell::sync::OnceCell<Mutex<()>> = once_cell::sync::OnceCell::new();
+
+pub fn auth_mutex() -> &'static Mutex<()> {
+    AUTH_MUTEX.get_or_init(|| Mutex::new(()))
 }
 
 #[async_trait]
@@ -25,13 +35,33 @@ impl FromRequestParts<SubsonicAuth> for RequireAuth {
     ) -> Result<Self, Self::Rejection> {
         match &state {
             UsernamePassword { username, password } => {
-                let is_valid = {
-                    match Query::<AuthQuery>::from_request_parts(parts, state)
+                // Don't allow concurrent login attempts
+                let _ = auth_mutex().lock().await;
+
+                let auth_query = if let Some(header) = parts
+                    .extract::<TypedHeader<headers::Authorization<Basic>>>()
+                    .await
+                    .ok()
+                {
+                    Some(AuthQuery {
+                        u: Some(header.username().to_owned()),
+                        p: Some(header.password().to_owned()),
+                        t: None,
+                        s: None,
+                    })
+                } else {
+                    Query::<AuthQuery>::from_request_parts(parts, state)
                         .await
                         .ok()
-                    {
+                        .map(|q| q.0)
+                };
+
+                let is_valid = {
+                    match auth_query {
                         Some(query) => match (&query.u, &query.p, &query.t, &query.s) {
-                            (_, _, Some(t), Some(s)) => check_user(username, password, t, s),
+                            (Some(u), _, Some(t), Some(s)) => {
+                                check_user(username, password, u, t, s)
+                            }
                             (Some(u), Some(p), _, _) => check_legacy_user(username, password, u, p),
                             _ => false,
                         },
@@ -42,6 +72,8 @@ impl FromRequestParts<SubsonicAuth> for RequireAuth {
                 if is_valid {
                     Ok(Self)
                 } else {
+                    // Wait a bit, to prevent login attempts being spammed
+                    sleep(Duration::from_millis(800)).await;
                     Err(axum::http::StatusCode::UNAUTHORIZED)
                 }
             }
@@ -50,10 +82,10 @@ impl FromRequestParts<SubsonicAuth> for RequireAuth {
     }
 }
 
-fn check_user(_username: &str, password: &str, t: &str, s: &str) -> bool {
+fn check_user(username: &str, password: &str, u: &str, t: &str, s: &str) -> bool {
     let digest = md5::compute(format!("{password}{s}"));
     let expected_token = format!("{:02X?}", digest);
-    t.to_lowercase() == expected_token
+    username == u && t.to_lowercase() == expected_token
 }
 
 fn check_legacy_user(username: &str, password: &str, u: &str, p: &str) -> bool {
@@ -78,12 +110,21 @@ mod tests {
         assert!(check_user(
             "joe",
             "sesame",
+            "joe",
+            "26719a1196d2a940705a59634eb18eab",
+            "c19b2d"
+        ));
+        assert!(!check_user(
+            "joe",
+            "sesame",
+            "not-joe",
             "26719a1196d2a940705a59634eb18eab",
             "c19b2d"
         ));
         assert!(!check_user(
             "joe",
             "snuh",
+            "joe",
             "26719a1196d2a940705a59634eb18eab",
             "c19b2d"
         ));

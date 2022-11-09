@@ -4,7 +4,7 @@ use crate::api::queries::{
     get_subsonic_albums_by_id3, get_subsonic_artists, get_subsonic_songs, GetSubsonicAlbumsQuery,
     GetSubsonicArtistsQuery, GetSubsonicSongsQuery,
 };
-use crate::{AppResult, AppState};
+use crate::{AppResult, SharedState};
 use axum::extract::{Query, State};
 use axum::response::Response;
 use itertools::Itertools;
@@ -29,9 +29,9 @@ pub struct Search3Params {
 pub async fn search3(
     format: SubsonicFormat,
     Query(params): Query<Search3Params>,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    let mut conn = state.db.conn().await?;
+    let mut conn = state.read().await.db.conn().await?;
 
     let songs = get_subsonic_songs(
         &mut conn,

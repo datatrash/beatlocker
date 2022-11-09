@@ -1,6 +1,6 @@
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::api::model::UNKNOWN_GENRE;
-use crate::{AppResult, AppState, Deserialize, Serialize};
+use crate::{AppResult, Deserialize, Serialize, SharedState};
 use axum::extract::State;
 use axum::response::Response;
 use sqlx::sqlite::SqliteRow;
@@ -10,7 +10,7 @@ use std::ops::DerefMut;
 
 pub async fn get_genres(
     format: SubsonicFormat,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
     let genre_songs: Vec<(String, u32)> = sqlx::query(
         r#"
@@ -28,7 +28,7 @@ pub async fn get_genres(
             row.get("song_count"),
         )
     })
-    .fetch_all(state.db.conn().await?.deref_mut())
+    .fetch_all(state.read().await.db.conn().await?.deref_mut())
     .await?;
 
     let genre_albums: Vec<(String, u32)> = sqlx::query(
@@ -46,7 +46,7 @@ pub async fn get_genres(
             row.get("album_count"),
         )
     })
-    .fetch_all(state.db.conn().await?.deref_mut())
+    .fetch_all(state.read().await.db.conn().await?.deref_mut())
     .await?;
 
     let genre_songs: BTreeMap<String, u32> = genre_songs.into_iter().collect();

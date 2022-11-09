@@ -1,7 +1,7 @@
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::api::model::{SubsonicChild, SubsonicChildDirectory};
 use crate::api::queries::{get_subsonic_songs, GetSubsonicSongsQuery};
-use crate::{AppResult, AppState};
+use crate::{AppResult, SharedState};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -21,9 +21,9 @@ pub struct GetMusicDirectoryParams {
 pub async fn get_music_directory(
     format: SubsonicFormat,
     Query(params): Query<GetMusicDirectoryParams>,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    let mut conn = state.db.conn().await?;
+    let mut conn = state.read().await.db.conn().await?;
 
     let parent_name = sqlx::query("SELECT * FROM folders WHERE folder_id = ?")
         .bind(params.id)

@@ -1,6 +1,8 @@
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::api::model::XmlStringWrapper;
-use crate::{get_lastfm, AppResult, AppState, Db, Deserialize, LastFmArtistResponse, Serialize};
+use crate::{
+    get_lastfm, AppResult, Db, Deserialize, LastFmArtistResponse, Serialize, SharedState,
+};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -19,9 +21,16 @@ pub struct GetArtistInfoParams {
 pub async fn get_artist_info(
     format: SubsonicFormat,
     Query(params): Query<GetArtistInfoParams>,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    match get_artist_info_impl(&state.db, params, state.options.lastfm_api_key, false).await? {
+    match get_artist_info_impl(
+        &state.read().await.db,
+        params,
+        state.read().await.options.lastfm_api_key.clone(),
+        false,
+    )
+    .await?
+    {
         Some(response) => Ok(format.render(response)),
         None => Ok((StatusCode::NOT_FOUND, ()).into_response()),
     }
@@ -30,9 +39,16 @@ pub async fn get_artist_info(
 pub async fn get_artist_info2(
     format: SubsonicFormat,
     Query(params): Query<GetArtistInfoParams>,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    match get_artist_info_impl(&state.db, params, state.options.lastfm_api_key, true).await? {
+    match get_artist_info_impl(
+        &state.read().await.db,
+        params,
+        state.read().await.options.lastfm_api_key.clone(),
+        true,
+    )
+    .await?
+    {
         Some(response) => Ok(format.render(ArtistInfo2Response {
             artist_info2: response.artist_info,
         })),

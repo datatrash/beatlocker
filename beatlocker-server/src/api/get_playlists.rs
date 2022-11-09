@@ -1,5 +1,5 @@
 use crate::api::format::{SubsonicFormat, ToXml};
-use crate::{AppResult, AppState, Deserialize, Serialize};
+use crate::{AppResult, Deserialize, Serialize, SharedState};
 use axum::extract::State;
 use axum::response::Response;
 use chrono::{DateTime, Utc};
@@ -10,9 +10,9 @@ use uuid::Uuid;
 
 pub async fn get_playlists(
     format: SubsonicFormat,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    let mut conn = state.db.conn().await?;
+    let mut conn = state.read().await.db.conn().await?;
 
     let results = sqlx::query(
         r#"

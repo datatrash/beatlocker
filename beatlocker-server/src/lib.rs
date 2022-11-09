@@ -25,6 +25,7 @@ use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing::level_filters::LevelFilter;
@@ -74,7 +75,7 @@ impl Default for ServerOptions {
 pub struct App {
     pub options: ServerOptions,
     pub app: Router,
-    pub state: Arc<AppState>,
+    pub state: SharedState,
     pub task_manager: Arc<TaskManager>,
 }
 
@@ -90,17 +91,19 @@ pub struct AppState {
     pub db: Arc<Db>,
 }
 
+type SharedState = Arc<RwLock<AppState>>;
+
 impl App {
     pub async fn new(options: ServerOptions) -> AppResult<Self> {
-        let state = Arc::new(AppState {
+        let state: SharedState = Arc::new(RwLock::new(AppState {
             options: options.clone(),
             db: Arc::new(Db::new(&options.database)?),
-        });
-        state.db.migrate().await?;
+        }));
+        state.read().await.db.migrate().await?;
 
         let task_manager = Arc::new(TaskManager::new(2)?);
 
-        let rest_routes = Router::with_state_arc(state.clone())
+        let rest_routes = Router::with_state(state.clone())
             .route("/ping", get(ping))
             .route("/ping.view", get(ping))
             .route("/getAlbum", get(get_album))
@@ -176,30 +179,30 @@ impl App {
         })
     }
 
-    pub fn task_state(&self) -> Arc<TaskState> {
+    pub async fn task_state(&self) -> Arc<TaskState> {
         Arc::new(TaskState {
             options: self.options.clone(),
-            db: self.state.db.clone(),
+            db: self.state.read().await.db.clone(),
         })
     }
 
-    pub fn import_all_folders(&self) -> AppResult<TaskMessage> {
+    pub async fn import_all_folders(&self) -> AppResult<TaskMessage> {
         Ok(TaskMessage::ImportFolder {
-            state: self.task_state(),
+            state: self.task_state().await,
             folder: self.options.path.clone(),
             parent_folder_id: None,
         })
     }
 
-    pub fn import_external_metadata(&self) -> AppResult<TaskMessage> {
+    pub async fn import_external_metadata(&self) -> AppResult<TaskMessage> {
         Ok(TaskMessage::ImportExternalMetadata {
-            state: self.task_state(),
+            state: self.task_state().await,
         })
     }
 
-    pub fn optimize_database(&self) -> AppResult<TaskMessage> {
+    pub async fn optimize_database(&self) -> AppResult<TaskMessage> {
         Ok(TaskMessage::OptimizeDatabase {
-            state: self.task_state(),
+            state: self.task_state().await,
         })
     }
 }

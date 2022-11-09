@@ -1,4 +1,4 @@
-use crate::AppState;
+use crate::{SharedState};
 use axum::extract::{FromRef, FromRequestParts, Query, State};
 use axum::http::request::Parts;
 use axum::http::{header, HeaderValue};
@@ -65,13 +65,13 @@ impl SubsonicFormat {
 impl<S> FromRequestParts<S> for SubsonicFormat
 where
     S: Send + Sync,
-    AppState: FromRef<S>,
+    SharedState: FromRef<S>,
 {
     type Rejection = std::convert::Infallible;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let app_state: State<AppState> = State::from_request_parts(parts, state).await?;
-        let server_version = app_state.options.server_version.clone();
+        let app_state: State<SharedState> = State::from_request_parts(parts, state).await?;
+        let server_version = app_state.read().await.options.server_version.clone();
 
         #[derive(Deserialize)]
         struct FormatQuery {

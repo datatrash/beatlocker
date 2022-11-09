@@ -1,5 +1,5 @@
 use crate::api::format::{SubsonicFormat, ToXml};
-use crate::{AppResult, AppState};
+use crate::{AppResult, SharedState};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -20,9 +20,9 @@ pub struct GetIndexesParams {
 pub async fn get_indexes(
     format: SubsonicFormat,
     Query(params): Query<GetIndexesParams>,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    let mut conn = state.db.conn().await?;
+    let mut conn = state.read().await.db.conn().await?;
 
     let mut builder = QueryBuilder::new("SELECT * FROM folders");
     match params.music_folder_id {

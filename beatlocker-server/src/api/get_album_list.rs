@@ -5,7 +5,7 @@ use crate::api::queries::{
     get_subsonic_albums, get_subsonic_albums_by_id3, GetSubsonicAlbumsListType,
     GetSubsonicAlbumsQuery,
 };
-use crate::{AlbumList2Response, AppResult, AppState, Db, GetAlbumList2Params};
+use crate::{AlbumList2Response, AppResult, AppState, Db, GetAlbumList2Params, SharedState};
 use axum::extract::{Query, State};
 use axum::response::Response;
 
@@ -24,9 +24,9 @@ pub async fn get_album_list(
     format: SubsonicFormat,
     ty: GetSubsonicAlbumsListType,
     Query(params): Query<GetAlbumListParams>,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    Ok(format.render(get_album_list_impl(&state.db, params, ty).await?))
+    Ok(format.render(get_album_list_impl(&state.read().await.db, params, ty).await?))
 }
 
 async fn get_album_list_impl(
@@ -111,7 +111,11 @@ mod tests {
         let state = TestState::new().await.unwrap();
 
         assert_eq!(
-            get(state.db(), GetSubsonicAlbumsListType::AlphabeticalByName).await,
+            get(
+                state.db().await,
+                GetSubsonicAlbumsListType::AlphabeticalByName
+            )
+            .await,
             &["folder1", "folder2", "folder3"]
         );
     }
@@ -122,7 +126,11 @@ mod tests {
         let state = TestState::new().await.unwrap();
 
         assert_eq!(
-            get(state.db(), GetSubsonicAlbumsListType::AlphabeticalByArtist).await,
+            get(
+                state.db().await,
+                GetSubsonicAlbumsListType::AlphabeticalByArtist
+            )
+            .await,
             &["folder1", "folder2", "folder3"]
         );
     }
@@ -133,7 +141,7 @@ mod tests {
 
         assert_eq!(
             get(
-                state.db(),
+                state.db().await,
                 GetSubsonicAlbumsListType::ByYear {
                     from_year: 2014,
                     to_year: 2022
@@ -145,7 +153,7 @@ mod tests {
 
         assert_eq!(
             get(
-                state.db(),
+                state.db().await,
                 GetSubsonicAlbumsListType::ByYear {
                     from_year: 2022,
                     to_year: 2014

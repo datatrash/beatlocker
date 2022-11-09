@@ -10,13 +10,13 @@ use crate::api::queries::{
     get_subsonic_albums_by_id3, get_subsonic_artists, get_subsonic_songs, GetSubsonicAlbumsQuery,
     GetSubsonicArtistsQuery, GetSubsonicSongsQuery,
 };
-use crate::{AppResult, AppState, Deserialize, Serialize};
+use crate::{AppResult, Deserialize, Serialize, SharedState};
 
 pub async fn get_starred2(
     format: SubsonicFormat,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    let mut conn = state.db.conn().await?;
+    let mut conn = state.read().await.db.conn().await?;
 
     let songs = get_subsonic_songs(
         &mut conn,

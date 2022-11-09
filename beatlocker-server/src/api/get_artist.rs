@@ -4,7 +4,7 @@ use crate::api::queries::{
     get_subsonic_albums_by_id3, get_subsonic_artists, get_subsonic_songs, GetSubsonicAlbumsQuery,
     GetSubsonicArtistsQuery, GetSubsonicSongsQuery,
 };
-use crate::{AppResult, AppState, Db, Deserialize, Serialize};
+use crate::{AppResult, Db, Deserialize, Serialize, SharedState};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -20,9 +20,9 @@ pub struct GetArtistParams {
 pub async fn get_artist(
     format: SubsonicFormat,
     Query(params): Query<GetArtistParams>,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    match get_artist_impl(&state.db, params).await? {
+    match get_artist_impl(&state.read().await.db, params).await? {
         Some(response) => Ok(format.render(response)),
         None => Ok((StatusCode::NOT_FOUND, ()).into_response()),
     }

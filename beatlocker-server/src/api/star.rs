@@ -8,7 +8,7 @@ use sqlx::Row;
 use uuid::Uuid;
 
 use crate::api::format::SubsonicFormat;
-use crate::{AppResult, AppState, Deserialize};
+use crate::{AppResult, Deserialize, SharedState};
 
 #[derive(Default, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,14 +34,14 @@ impl StarParams {
 pub async fn star(
     format: SubsonicFormat,
     params: axum_extra::extract::Query<StarParams>,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
     let ids = params.all_ids();
     for id in ids {
         sqlx::query("INSERT OR IGNORE INTO starred (starred_id, created) VALUES (?, ?)")
             .bind(id)
-            .bind((state.options.now_provider)())
-            .execute(state.db.conn().await?.deref_mut())
+            .bind((state.read().await.options.now_provider)())
+            .execute(state.read().await.db.conn().await?.deref_mut())
             .await?;
     }
 
@@ -51,7 +51,7 @@ pub async fn star(
 pub async fn unstar(
     format: SubsonicFormat,
     params: axum_extra::extract::Query<StarParams>,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
     let ids = params.all_ids();
     for id in ids {
@@ -69,14 +69,14 @@ pub async fn unstar(
             let folder_child_id: Uuid = row.get("folder_child_id");
             folder_child_id
         })
-        .fetch_optional(state.db.conn().await?.deref_mut())
+        .fetch_optional(state.read().await.db.conn().await?.deref_mut())
         .await
         .unwrap();
 
         for id in [Some(id), folder_child_id].iter().flatten() {
             sqlx::query("DELETE FROM starred WHERE starred_id = ?")
                 .bind(id)
-                .execute(state.db.conn().await?.deref_mut())
+                .execute(state.read().await.db.conn().await?.deref_mut())
                 .await?
                 .rows_affected();
         }

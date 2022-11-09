@@ -6,7 +6,7 @@ use axum::response::Response;
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::api::model::SubsonicSong;
 use crate::api::queries::{get_subsonic_songs, GetSubsonicSongsQuery};
-use crate::{AppResult, AppState, Db, Deserialize, Serialize};
+use crate::{AppResult, Db, Deserialize, Serialize, SharedState};
 
 #[derive(Default, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -21,9 +21,9 @@ pub struct GetRandomSongsParams {
 pub async fn get_random_songs(
     format: SubsonicFormat,
     Query(params): Query<GetRandomSongsParams>,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    Ok(format.render(get_random_songs_impl(&state.db, params).await?))
+    Ok(format.render(get_random_songs_impl(&state.read().await.db, params).await?))
 }
 
 async fn get_random_songs_impl(

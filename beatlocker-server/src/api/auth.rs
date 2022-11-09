@@ -38,10 +38,10 @@ impl FromRequestParts<SubsonicAuth> for RequireAuth {
                 // Don't allow concurrent login attempts
                 let _ = auth_mutex().lock().await;
 
-                let auth_query = if let Some(header) = parts
+                let auth_query = if let Ok(header) = parts
                     .extract::<TypedHeader<headers::Authorization<Basic>>>()
                     .await
-                    .ok()
+                    
                 {
                     Some(AuthQuery {
                         u: Some(header.username().to_owned()),

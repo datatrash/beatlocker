@@ -3,11 +3,12 @@ use crate::api::model::{SubsonicAlbum, SubsonicSong};
 use crate::api::queries::{
     get_subsonic_albums_by_id3, get_subsonic_songs, GetSubsonicAlbumsQuery, GetSubsonicSongsQuery,
 };
-use crate::{AppResult, AppState, Db, Deserialize, Serialize};
+use crate::{AppResult, Db, Deserialize, Serialize, SharedState};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use std::ops::DerefMut;
+
 use uuid::Uuid;
 
 #[derive(Default, Debug, Deserialize)]
@@ -19,9 +20,9 @@ pub struct GetAlbumParams {
 pub async fn get_album(
     format: SubsonicFormat,
     Query(params): Query<GetAlbumParams>,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    match get_album_impl(&state.db, params).await? {
+    match get_album_impl(&state.read().await.db, params).await? {
         Some(response) => Ok(format.render(response)),
         None => Ok((StatusCode::NOT_FOUND, ()).into_response()),
     }

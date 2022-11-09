@@ -1,7 +1,7 @@
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::api::model::SubsonicSong;
 use crate::api::queries::{get_subsonic_songs, GetSubsonicSongsQuery};
-use crate::{AppResult, AppState, Deserialize, Serialize};
+use crate::{AppResult, Deserialize, Serialize, SharedState};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -20,9 +20,9 @@ pub struct GetPlaylistParams {
 pub async fn get_playlist(
     format: SubsonicFormat,
     Query(params): Query<GetPlaylistParams>,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    let mut conn = state.db.conn().await?;
+    let mut conn = state.read().await.db.conn().await?;
 
     let playlist = sqlx::query(
         r#"

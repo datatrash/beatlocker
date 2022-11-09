@@ -34,7 +34,9 @@ async fn integration_test() -> AppResult<()> {
     let app = App::new(options).await?;
     let client = TestClient::new(app.app.clone());
 
-    app.task_manager.send(app.import_all_folders()?).await?;
+    app.task_manager
+        .send(app.import_all_folders().await?)
+        .await?;
 
     let res = client.get("/rest/ping?f=json").send().await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -237,7 +239,7 @@ async fn integration_test() -> AppResult<()> {
 
     // Try streaming
     let res = client
-        .get(&"/rest/stream?id=1568a84c-22cd-2176-ab86-c69194a9de16".to_string())
+        .get("/rest/stream?id=1568a84c-22cd-2176-ab86-c69194a9de16")
         .send()
         .await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -252,7 +254,7 @@ async fn integration_test() -> AppResult<()> {
 
     // Try get (non-existent) coverart
     let res = client
-        .get(&"/rest/getCoverArt?id=1568a84c-22cd-2176-ab86-c69194a9de16".to_string())
+        .get("/rest/getCoverArt?id=1568a84c-22cd-2176-ab86-c69194a9de16")
         .send()
         .await;
     assert_eq!(res.status(), StatusCode::OK);
@@ -315,7 +317,9 @@ async fn integration_test() -> AppResult<()> {
     assert_eq!(res.status(), StatusCode::OK);
 
     // Import everything again and see if there are no duplicates and nothing starred etc
-    app.task_manager.send(app.import_all_folders()?).await?;
+    app.task_manager
+        .send(app.import_all_folders().await?)
+        .await?;
     let res = client
         .get("/rest/search3?f=json&query=\"\"&songCount=2")
         .send()

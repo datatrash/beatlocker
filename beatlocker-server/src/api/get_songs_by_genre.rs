@@ -6,7 +6,7 @@ use axum::response::Response;
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::api::model::SubsonicSong;
 use crate::api::queries::{get_subsonic_songs, GetSubsonicSongsQuery};
-use crate::{AppResult, AppState, Db, Deserialize, Serialize};
+use crate::{AppResult, Db, Deserialize, Serialize, SharedState};
 
 #[derive(Default, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,9 +20,9 @@ pub struct GetSongsByGenreParams {
 pub async fn get_songs_by_genre(
     format: SubsonicFormat,
     Query(params): Query<GetSongsByGenreParams>,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    Ok(format.render(get_songs_by_genre_impl(&state.db, params).await?))
+    Ok(format.render(get_songs_by_genre_impl(&state.read().await.db, params).await?))
 }
 
 async fn get_songs_by_genre_impl(

@@ -2,7 +2,7 @@ use crate::api::format::{SubsonicFormat, ToXml};
 use crate::api::queries::{
     get_subsonic_albums_by_id3, GetSubsonicAlbumsListType, GetSubsonicAlbumsQuery,
 };
-use crate::{AppResult, AppState, Db};
+use crate::{AppResult, Db, SharedState};
 use axum::extract::{Query, State};
 use axum::response::Response;
 
@@ -21,9 +21,9 @@ pub async fn get_album_list2(
     format: SubsonicFormat,
     ty: GetSubsonicAlbumsListType,
     Query(params): Query<GetAlbumList2Params>,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    Ok(format.render(get_album_list2_impl(&state.db, params, ty).await?))
+    Ok(format.render(get_album_list2_impl(&state.read().await.db, params, ty).await?))
 }
 
 async fn get_album_list2_impl(
@@ -105,7 +105,11 @@ mod tests {
         let state = TestState::new().await.unwrap();
 
         assert_eq!(
-            get(state.db(), GetSubsonicAlbumsListType::AlphabeticalByName).await,
+            get(
+                state.db().await,
+                GetSubsonicAlbumsListType::AlphabeticalByName
+            )
+            .await,
             &["Artist1_Album1", "Artist2_Album1", "SharedAlbum"]
         );
     }
@@ -115,7 +119,11 @@ mod tests {
         let state = TestState::new().await.unwrap();
 
         assert_eq!(
-            get(state.db(), GetSubsonicAlbumsListType::AlphabeticalByArtist).await,
+            get(
+                state.db().await,
+                GetSubsonicAlbumsListType::AlphabeticalByArtist
+            )
+            .await,
             &["Artist1_Album1", "Artist2_Album1", "SharedAlbum"]
         );
     }
@@ -126,7 +134,7 @@ mod tests {
 
         assert_eq!(
             get(
-                state.db(),
+                state.db().await,
                 GetSubsonicAlbumsListType::ByYear {
                     from_year: 2014,
                     to_year: 2022
@@ -138,7 +146,7 @@ mod tests {
 
         assert_eq!(
             get(
-                state.db(),
+                state.db().await,
                 GetSubsonicAlbumsListType::ByYear {
                     from_year: 2022,
                     to_year: 2014
@@ -155,7 +163,7 @@ mod tests {
 
         assert_eq!(
             get(
-                state.db(),
+                state.db().await,
                 GetSubsonicAlbumsListType::ByGenre {
                     genre: "Genre1".to_string()
                 }

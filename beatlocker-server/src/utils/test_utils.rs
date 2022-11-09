@@ -31,13 +31,15 @@ impl TestState {
             ..Default::default()
         };
         let app = App::new(options).await?;
-        app.task_manager.send(app.import_all_folders()?).await?;
+        app.task_manager
+            .send(app.import_all_folders().await?)
+            .await?;
 
         Ok(TestState { app, tempdir })
     }
 
-    pub fn db(&self) -> Arc<Db> {
-        self.app.state.db.clone()
+    pub async fn db(&self) -> Arc<Db> {
+        self.app.state.read().await.db.clone()
     }
 }
 

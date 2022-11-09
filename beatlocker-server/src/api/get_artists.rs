@@ -1,6 +1,6 @@
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::api::queries::{get_subsonic_artists, GetSubsonicArtistsQuery};
-use crate::{AppResult, AppState, Db, Deserialize, Serialize};
+use crate::{AppResult, Db, Deserialize, Serialize, SharedState};
 use axum::extract::{Query, State};
 use axum::response::Response;
 use itertools::Itertools;
@@ -16,9 +16,9 @@ pub struct GetArtistsParams {
 pub async fn get_artists(
     format: SubsonicFormat,
     Query(params): Query<GetArtistsParams>,
-    State(state): State<AppState>,
+    State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    Ok(format.render(get_artists_impl(&state.db, params).await?))
+    Ok(format.render(get_artists_impl(&state.read().await.db, params).await?))
 }
 
 async fn get_artists_impl(db: &Db, _params: GetArtistsParams) -> AppResult<ArtistsResponse> {

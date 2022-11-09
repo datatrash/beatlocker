@@ -93,9 +93,9 @@ async fn main() -> AppResult<()> {
 
     let mgr = app.task_manager.clone();
     let tasks = vec![
-        app.import_all_folders()?,
-        app.import_external_metadata()?,
-        app.optimize_database()?,
+        app.import_all_folders().await?,
+        app.import_external_metadata().await?,
+        app.optimize_database().await?,
     ];
     let join = tokio::spawn(async move {
         let lim = RateLimiter::direct(Quota::per_hour(NonZeroU32::new(1u32).unwrap()));

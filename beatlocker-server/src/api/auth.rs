@@ -41,7 +41,6 @@ impl FromRequestParts<SubsonicAuth> for RequireAuth {
                 let auth_query = if let Ok(header) = parts
                     .extract::<TypedHeader<headers::Authorization<Basic>>>()
                     .await
-                    
                 {
                     Some(AuthQuery {
                         u: Some(header.username().to_owned()),

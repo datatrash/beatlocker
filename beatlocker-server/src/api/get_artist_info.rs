@@ -1,8 +1,6 @@
 use crate::api::format::{SubsonicFormat, ToXml};
 use crate::api::model::XmlStringWrapper;
-use crate::{
-    get_lastfm, AppResult, Db, Deserialize, LastFmArtistResponse, Serialize, SharedState,
-};
+use crate::{get_lastfm, AppResult, Db, Deserialize, LastFmArtistResponse, Serialize, SharedState};
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};

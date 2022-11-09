@@ -1,4 +1,4 @@
-use crate::{SharedState};
+use crate::SharedState;
 use axum::extract::{FromRef, FromRequestParts, Query, State};
 use axum::http::request::Parts;
 use axum::http::{header, HeaderValue};

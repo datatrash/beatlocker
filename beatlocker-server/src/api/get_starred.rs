@@ -16,7 +16,7 @@ pub async fn get_starred(
     format: SubsonicFormat,
     State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    let mut conn = state.read().await.db.conn().await?;
+    let mut conn = state.db.conn().await?;
 
     let songs = get_subsonic_songs(
         &mut conn,

@@ -25,7 +25,6 @@ use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing::level_filters::LevelFilter;
@@ -91,15 +90,15 @@ pub struct AppState {
     pub db: Arc<Db>,
 }
 
-type SharedState = Arc<RwLock<AppState>>;
+type SharedState = Arc<AppState>;
 
 impl App {
     pub async fn new(options: ServerOptions) -> AppResult<Self> {
-        let state: SharedState = Arc::new(RwLock::new(AppState {
+        let state: SharedState = Arc::new(AppState {
             options: options.clone(),
             db: Arc::new(Db::new(&options.database)?),
-        }));
-        state.read().await.db.migrate().await?;
+        });
+        state.db.migrate().await?;
 
         let task_manager = Arc::new(TaskManager::new(2)?);
 
@@ -182,7 +181,7 @@ impl App {
     pub async fn task_state(&self) -> Arc<TaskState> {
         Arc::new(TaskState {
             options: self.options.clone(),
-            db: self.state.read().await.db.clone(),
+            db: self.state.db.clone(),
         })
     }
 

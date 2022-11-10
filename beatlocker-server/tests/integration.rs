@@ -309,7 +309,6 @@ async fn integration_test() -> AppResult<()> {
     assert_eq!(res.status(), StatusCode::OK);
     insta::assert_snapshot!("getStarred2.xml", res.xml_string().await);
 
-    println!("UNSTARRRRRR");
     let res = client
         .get(&format!("/rest/unstar?id={RICHARD_BONA_UUID}&id={MOTORWAY_OST_ALBUM_UUID}&id={MOTORWAY_OST_RADAR_UNIT_FOLDER_CHILD_UUID}"))
         .send()

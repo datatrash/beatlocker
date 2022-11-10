@@ -23,7 +23,7 @@ pub async fn get_music_directory(
     Query(params): Query<GetMusicDirectoryParams>,
     State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    let mut conn = state.read().await.db.conn().await?;
+    let mut conn = state.db.conn().await?;
 
     let parent_name = sqlx::query("SELECT * FROM folders WHERE folder_id = ?")
         .bind(params.id)

@@ -22,7 +22,7 @@ pub async fn get_songs_by_genre(
     Query(params): Query<GetSongsByGenreParams>,
     State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    Ok(format.render(get_songs_by_genre_impl(&state.read().await.db, params).await?))
+    Ok(format.render(get_songs_by_genre_impl(&state.db, params).await?))
 }
 
 async fn get_songs_by_genre_impl(

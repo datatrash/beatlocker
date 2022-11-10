@@ -22,7 +22,7 @@ pub async fn get_playlist(
     Query(params): Query<GetPlaylistParams>,
     State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    let mut conn = state.read().await.db.conn().await?;
+    let mut conn = state.db.conn().await?;
 
     let playlist = sqlx::query(
         r#"

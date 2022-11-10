@@ -39,7 +39,7 @@ impl TestState {
     }
 
     pub async fn db(&self) -> Arc<Db> {
-        self.app.state.read().await.db.clone()
+        self.app.state.db.clone()
     }
 }
 

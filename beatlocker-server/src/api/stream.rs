@@ -22,7 +22,7 @@ pub async fn stream(
     Query(params): Query<StreamParams>,
     State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    let mut conn = state.read().await.db.conn().await?;
+    let mut conn = state.db.conn().await?;
 
     let result = sqlx::query(
         "SELECT path, s.content_type FROM folder_children fc LEFT JOIN songs s ON s.song_id = fc.song_id WHERE folder_child_id = ?",

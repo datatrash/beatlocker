@@ -26,7 +26,7 @@ pub async fn get_album_list(
     Query(params): Query<GetAlbumListParams>,
     State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    Ok(format.render(get_album_list_impl(&state.read().await.db, params, ty).await?))
+    Ok(format.render(get_album_list_impl(&state.db, params, ty).await?))
 }
 
 async fn get_album_list_impl(

@@ -23,7 +23,7 @@ pub async fn get_random_songs(
     Query(params): Query<GetRandomSongsParams>,
     State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    Ok(format.render(get_random_songs_impl(&state.read().await.db, params).await?))
+    Ok(format.render(get_random_songs_impl(&state.db, params).await?))
 }
 
 async fn get_random_songs_impl(

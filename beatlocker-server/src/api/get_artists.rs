@@ -18,7 +18,7 @@ pub async fn get_artists(
     Query(params): Query<GetArtistsParams>,
     State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    Ok(format.render(get_artists_impl(&state.read().await.db, params).await?))
+    Ok(format.render(get_artists_impl(&state.db, params).await?))
 }
 
 async fn get_artists_impl(db: &Db, _params: GetArtistsParams) -> AppResult<ArtistsResponse> {

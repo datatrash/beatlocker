@@ -22,7 +22,7 @@ pub async fn get_indexes(
     Query(params): Query<GetIndexesParams>,
     State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    let mut conn = state.read().await.db.conn().await?;
+    let mut conn = state.db.conn().await?;
 
     let mut builder = QueryBuilder::new("SELECT * FROM folders");
     match params.music_folder_id {

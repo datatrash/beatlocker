@@ -22,7 +22,7 @@ pub async fn get_artist(
     Query(params): Query<GetArtistParams>,
     State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    match get_artist_impl(&state.read().await.db, params).await? {
+    match get_artist_impl(&state.db, params).await? {
         Some(response) => Ok(format.render(response)),
         None => Ok((StatusCode::NOT_FOUND, ()).into_response()),
     }

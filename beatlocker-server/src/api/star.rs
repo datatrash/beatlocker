@@ -40,8 +40,8 @@ pub async fn star(
     for id in ids {
         sqlx::query("INSERT OR IGNORE INTO starred (starred_id, created) VALUES (?, ?)")
             .bind(id)
-            .bind((state.read().await.options.now_provider)())
-            .execute(state.read().await.db.conn().await?.deref_mut())
+            .bind((state.options.now_provider)())
+            .execute(state.db.conn().await?.deref_mut())
             .await?;
     }
 
@@ -69,14 +69,14 @@ pub async fn unstar(
             let folder_child_id: Uuid = row.get("folder_child_id");
             folder_child_id
         })
-        .fetch_optional(state.read().await.db.conn().await?.deref_mut())
+        .fetch_optional(state.db.conn().await?.deref_mut())
         .await
         .unwrap();
 
         for id in [Some(id), folder_child_id].iter().flatten() {
             sqlx::query("DELETE FROM starred WHERE starred_id = ?")
                 .bind(id)
-                .execute(state.read().await.db.conn().await?.deref_mut())
+                .execute(state.db.conn().await?.deref_mut())
                 .await?
                 .rows_affected();
         }

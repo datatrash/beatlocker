@@ -19,7 +19,7 @@ pub async fn get_cover_art(
     Query(params): Query<GetCoverArtParams>,
     State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    let mut conn = state.read().await.db.conn().await?;
+    let mut conn = state.db.conn().await?;
 
     let data = sqlx::query("SELECT * FROM cover_art WHERE cover_art_id = ?")
         .bind(params.id)

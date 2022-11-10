@@ -28,7 +28,7 @@ pub async fn get_genres(
             row.get("song_count"),
         )
     })
-    .fetch_all(state.read().await.db.conn().await?.deref_mut())
+    .fetch_all(state.db.conn().await?.deref_mut())
     .await?;
 
     let genre_albums: Vec<(String, u32)> = sqlx::query(
@@ -46,7 +46,7 @@ pub async fn get_genres(
             row.get("album_count"),
         )
     })
-    .fetch_all(state.read().await.db.conn().await?.deref_mut())
+    .fetch_all(state.db.conn().await?.deref_mut())
     .await?;
 
     let genre_songs: BTreeMap<String, u32> = genre_songs.into_iter().collect();

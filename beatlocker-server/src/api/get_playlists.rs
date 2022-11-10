@@ -12,7 +12,7 @@ pub async fn get_playlists(
     format: SubsonicFormat,
     State(state): State<SharedState>,
 ) -> AppResult<Response> {
-    let mut conn = state.read().await.db.conn().await?;
+    let mut conn = state.db.conn().await?;
 
     let results = sqlx::query(
         r#"

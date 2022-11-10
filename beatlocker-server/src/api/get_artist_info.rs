@@ -22,9 +22,9 @@ pub async fn get_artist_info(
     State(state): State<SharedState>,
 ) -> AppResult<Response> {
     match get_artist_info_impl(
-        &state.read().await.db,
+        &state.db,
         params,
-        state.read().await.options.lastfm_api_key.clone(),
+        state.options.lastfm_api_key.clone(),
         false,
     )
     .await?
@@ -40,9 +40,9 @@ pub async fn get_artist_info2(
     State(state): State<SharedState>,
 ) -> AppResult<Response> {
     match get_artist_info_impl(
-        &state.read().await.db,
+        &state.db,
         params,
-        state.read().await.options.lastfm_api_key.clone(),
+        state.options.lastfm_api_key.clone(),
         true,
     )
     .await?

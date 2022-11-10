@@ -11,6 +11,7 @@ CREATE TABLE folders
     folder_id text primary key not null,
     parent_id text,
     name text not null,
+    path text not null,
     cover_art_id text,
     created datetime not null,
     foreign key (parent_id) references folders(folder_id),

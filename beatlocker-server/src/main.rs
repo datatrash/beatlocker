@@ -99,10 +99,7 @@ async fn main() -> AppResult<()> {
     ];
     let join = tokio::spawn(async move {
         let lim = RateLimiter::direct(Quota::per_hour(NonZeroU32::new(1u32).unwrap()));
-        let jitter = Jitter::new(
-            Duration::from_secs(60 * 60 * 4),
-            Duration::from_secs(60 * 60 * 3),
-        );
+        let jitter = Jitter::new(Duration::from_secs(60 * 15), Duration::from_secs(60 * 3));
 
         loop {
             lim.until_ready_with_jitter(jitter).await;

@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 pub struct TestState {
     pub app: App,
@@ -14,7 +14,7 @@ pub struct TestState {
 
 impl TestState {
     pub async fn new() -> AppResult<TestState> {
-        let tempdir = Some(TempDir::new_in(".", "mock")?);
+        let tempdir = Some(TempDir::new_in(".")?);
         add_mock_data(tempdir.as_ref().unwrap().path()).await?;
 
         let options = ServerOptions {

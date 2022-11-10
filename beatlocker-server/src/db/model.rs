@@ -6,6 +6,7 @@ pub struct DbFolder {
     pub folder_id: Uuid,
     pub parent_id: Option<Uuid>,
     pub name: String,
+    pub path: String,
     pub cover_art_id: Option<Uuid>,
     pub created: DateTime<Utc>,
 }

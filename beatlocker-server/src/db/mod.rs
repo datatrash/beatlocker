@@ -217,8 +217,8 @@ impl Db {
 
         let id = sqlx::query(
             r#"
-        INSERT INTO folders (folder_id, parent_id, name, cover_art_id, created)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO folders (folder_id, parent_id, name, path, cover_art_id, created)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT (folder_id) DO UPDATE set folder_id = folder_id
         RETURNING folder_id
         "#,
@@ -226,6 +226,7 @@ impl Db {
         .bind(folder.folder_id)
         .bind(folder.parent_id)
         .bind(&folder.name)
+        .bind(&folder.path)
         .bind(folder.cover_art_id)
         .bind(folder.created)
         .map(|row| row.get("folder_id"))

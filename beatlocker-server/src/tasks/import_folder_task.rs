@@ -27,6 +27,7 @@ pub async fn import_folder(
                     folder_id: Uuid::nil(),
                     parent_id: None,
                     name: "root".to_owned(),
+                    path: folder.to_string_lossy().to_string(),
                     cover_art_id: None,
                     created: (state.options.now_provider)(),
                 })
@@ -46,6 +47,7 @@ pub async fn import_folder(
                 folder_id: str_to_uuid(folder.to_str().unwrap()),
                 parent_id: Some(parent_folder_id),
                 name: folder_name.to_string_lossy().to_string(),
+                path: folder.to_string_lossy().to_string(),
                 cover_art_id: None,
                 created: (state.options.now_provider)(),
             })

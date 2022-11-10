@@ -1,0 +1,38 @@
+---
+source: beatlocker-server/tests/deletion.rs
+assertion_line: 75
+expression: "res.json::<serde_json::Value>().await"
+---
+{
+  "subsonic-response": {
+    "artists": {
+      "index": [
+        {
+          "artist": [
+            {
+              "albumCount": 1,
+              "id": "c2042f2f-fbda-64e4-ff33-62bad6853d99",
+              "name": "Alex Gopher"
+            }
+          ],
+          "name": "A"
+        },
+        {
+          "artist": [
+            {
+              "albumCount": 0,
+              "id": "a597d760-ecda-330c-8e48-b8a92ba19a25",
+              "name": "Unknown Artist"
+            }
+          ],
+          "name": "U"
+        }
+      ]
+    },
+    "ignoredArticles": "The El La Los Las Le Les Os As O A",
+    "serverVersion": "unknown",
+    "status": "ok",
+    "type": "beatlocker",
+    "version": "1.16.1"
+  }
+}

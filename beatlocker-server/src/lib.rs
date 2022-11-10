@@ -204,6 +204,12 @@ impl App {
             state: self.task_state().await,
         })
     }
+
+    pub async fn remove_deleted_files(&self) -> AppResult<TaskMessage> {
+        Ok(TaskMessage::RemoveDeletedFiles {
+            state: self.task_state().await,
+        })
+    }
 }
 
 pub fn enable_default_tracing() {

@@ -6,14 +6,10 @@ use chrono::{DateTime, Utc};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-const MOTORWAY_OST_FOLDER_UUID: &str = "68f8b71b-d9b4-c77e-c7f1-e4af263bcd93";
-const MOTORWAY_OST_ALBUM_UUID: &str = "20d02390-2687-c407-2d28-d74f9fc6d5a1";
-const MOTORWAY_OST_RADAR_UNIT_FOLDER_CHILD_UUID: &str = "9fe0fb24-dabd-4464-258b-1ab72a28aa94";
-const MOTORWAY_OST_RADAR_UNIT_SONG_UUID: &str = "f417c310-98e2-e42f-ed0d-f9208c48419b";
-const RICHARD_BONA_UUID: &str = "d094e9f8-a8e2-1737-0cfc-c4b24ab0aedf";
-
 #[path = "test_utils/mod.rs"]
 mod test_utils;
+
+use test_utils::*;
 
 #[tokio::test]
 async fn integration_test() -> AppResult<()> {

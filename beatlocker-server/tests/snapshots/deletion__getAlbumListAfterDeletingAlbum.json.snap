@@ -1,0 +1,44 @@
+---
+source: beatlocker-server/tests/deletion.rs
+assertion_line: 69
+expression: "res.json::<serde_json::Value>().await"
+---
+{
+  "subsonic-response": {
+    "albumList": {
+      "album": [
+        {
+          "duration": 6,
+          "id": "218042a4-fe26-1c75-b773-aaa0587f46af",
+          "isDir": true,
+          "name": "Motorway OST",
+          "parent": "00000000-0000-0000-0000-000000000000",
+          "songCount": 1,
+          "title": "Motorway OST"
+        },
+        {
+          "duration": 95,
+          "id": "e71914e0-229f-bdd1-e23b-c8e26439aaa2",
+          "isDir": true,
+          "name": "MotorwayNested",
+          "parent": "00000000-0000-0000-0000-000000000000",
+          "songCount": 1,
+          "title": "MotorwayNested"
+        },
+        {
+          "duration": 6,
+          "id": "4b41e323-251c-2f59-cea1-0d0a527dee7d",
+          "isDir": true,
+          "name": "Unknown",
+          "parent": "00000000-0000-0000-0000-000000000000",
+          "songCount": 1,
+          "title": "Unknown"
+        }
+      ]
+    },
+    "serverVersion": "unknown",
+    "status": "ok",
+    "type": "beatlocker",
+    "version": "1.16.1"
+  }
+}

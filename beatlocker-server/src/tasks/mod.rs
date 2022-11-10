@@ -2,11 +2,13 @@ mod extract_metadata;
 mod import_external_metadata_task;
 mod import_folder_task;
 mod optimize_database_task;
+mod removed_deleted_files_task;
 
 use crate::db::DbCoverArt;
 use crate::tasks::import_external_metadata_task::import_external_metadata;
 use crate::tasks::import_folder_task::import_folder;
 use crate::tasks::optimize_database_task::optimize_database;
+use crate::tasks::removed_deleted_files_task::remove_deleted_files;
 use crate::{reqwest_client, str_to_uuid, AppResult, Db, ServerOptions};
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
@@ -52,6 +54,9 @@ pub enum TaskMessage {
     OptimizeDatabase {
         state: Arc<TaskState>,
     },
+    RemoveDeletedFiles {
+        state: Arc<TaskState>,
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -60,6 +65,7 @@ pub enum TaskReply {
     ImportFolder(PathBuf),
     ImportExternalMetadata,
     OptimizeDatabase,
+    RemoveDeletedFiles,
 }
 
 pub struct TaskState {
@@ -123,6 +129,14 @@ impl TaskManager {
                                             error!(?e, "Error when optimizing database");
                                         });
                                         let _ = envelope.reply_tx.send(TaskReply::OptimizeDatabase);
+                                    });
+                                }
+                                TaskMessage::RemoveDeletedFiles { state } => {
+                                    task::spawn(async move {
+                                        remove_deleted_files(state).await.unwrap_or_else(|e| {
+                                            error!(?e, "Error when removing deleted files");
+                                        });
+                                        let _ = envelope.reply_tx.send(TaskReply::RemoveDeletedFiles);
                                     });
                                 }
                             }

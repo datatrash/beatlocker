@@ -13,6 +13,7 @@ use test_utils::*;
 #[tokio::test]
 async fn deletion_test() -> AppResult<()> {
     let tempdir = tempfile::Builder::new().rand_bytes(0).tempdir_in(".")?;
+    println!("tempdir: {:?}", tempdir.path());
     copy_recursively("tests/data", tempdir.path())?;
 
     enable_default_tracing();

@@ -1,6 +1,5 @@
 ---
 source: beatlocker-server/tests/deletion.rs
-assertion_line: 69
 expression: "res.json::<serde_json::Value>().await"
 ---
 {
@@ -9,7 +8,7 @@ expression: "res.json::<serde_json::Value>().await"
       "album": [
         {
           "duration": 6,
-          "id": "218042a4-fe26-1c75-b773-aaa0587f46af",
+          "id": "655d3fb8-ede5-8685-2498-5544550defc5",
           "isDir": true,
           "name": "Motorway OST",
           "parent": "00000000-0000-0000-0000-000000000000",
@@ -18,7 +17,7 @@ expression: "res.json::<serde_json::Value>().await"
         },
         {
           "duration": 95,
-          "id": "e71914e0-229f-bdd1-e23b-c8e26439aaa2",
+          "id": "0ea0b52e-8984-b833-b0c0-8f3c7e26fe4f",
           "isDir": true,
           "name": "MotorwayNested",
           "parent": "00000000-0000-0000-0000-000000000000",
@@ -27,7 +26,7 @@ expression: "res.json::<serde_json::Value>().await"
         },
         {
           "duration": 6,
-          "id": "4b41e323-251c-2f59-cea1-0d0a527dee7d",
+          "id": "639c2b84-6754-bb31-eb16-86e7fa27dcb4",
           "isDir": true,
           "name": "Unknown",
           "parent": "00000000-0000-0000-0000-000000000000",

@@ -1,6 +1,5 @@
 ---
 source: beatlocker-server/tests/deletion.rs
-assertion_line: 54
 expression: "res.json::<serde_json::Value>().await"
 ---
 {
@@ -30,10 +29,10 @@ expression: "res.json::<serde_json::Value>().await"
           "created": "2020-02-02T00:00:00Z",
           "duration": 27,
           "genre": "World Music",
-          "id": "45e19cbb-4d17-1a2b-d38e-374ed9abf5ea",
+          "id": "53c42459-31c6-a4d6-bb12-ac6d1d2dfa23",
           "isDir": false,
           "isVideo": false,
-          "parent": "348d7798-0b48-2077-2cb7-3b89c4a488cb",
+          "parent": "322adc6c-e179-89e7-2e78-8dd857d93e3d",
           "size": 765952,
           "suffix": "mp3",
           "title": "Akwa Samba Yaya",

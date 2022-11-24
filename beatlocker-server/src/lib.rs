@@ -14,7 +14,7 @@ use crate::db::Db;
 use crate::errors::AppError;
 use axum::http::{HeaderMap, HeaderValue, Method};
 
-use axum::{routing::get, Router};
+use axum::{routing::get, Router, RouterService};
 use chrono::{DateTime, Utc};
 use const_format::formatcp;
 use serde::{Deserialize, Serialize};
@@ -73,7 +73,7 @@ impl Default for ServerOptions {
 
 pub struct App {
     pub options: ServerOptions,
-    pub app: Router,
+    pub app: RouterService,
     pub state: SharedState,
     pub task_manager: Arc<TaskManager>,
 }
@@ -102,7 +102,7 @@ impl App {
 
         let task_manager = Arc::new(TaskManager::new(2)?);
 
-        let rest_routes = Router::with_state(state.clone())
+        let rest_routes = Router::new()
             .route("/ping", get(ping))
             .route("/ping.view", get(ping))
             .route("/getAlbum", get(get_album))
@@ -168,7 +168,8 @@ impl App {
                     .allow_origin("*".parse::<HeaderValue>().unwrap())
                     .allow_methods([Method::GET]),
             )
-            .layer(TraceLayer::new_for_http());
+            .layer(TraceLayer::new_for_http())
+            .with_state(state.clone());
 
         Ok(Self {
             options,

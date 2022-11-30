@@ -246,8 +246,9 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "axum"
-version = "0.6.0-rc.5"
-source = "git+https://github.com/tokio-rs/axum.git#102d5887fa5958e8f58bf59a87f8053851673ef8"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08b108ad2665fa3f6e6a517c3d80ec3e77d224c47d605167aefaa5d7ef97fa48"
 dependencies = [
  "async-trait",
  "axum-core",
@@ -279,8 +280,9 @@ dependencies = [
 
 [[package]]
 name = "axum-core"
-version = "0.3.0-rc.3"
-source = "git+https://github.com/tokio-rs/axum.git#102d5887fa5958e8f58bf59a87f8053851673ef8"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79b8558f5a0581152dc94dcd289132a1d377494bdeafcd41869b3258e3e2ad92"
 dependencies = [
  "async-trait",
  "bytes",
@@ -295,8 +297,9 @@ dependencies = [
 
 [[package]]
 name = "axum-extra"
-version = "0.4.0-rc.3"
-source = "git+https://github.com/tokio-rs/axum.git#102d5887fa5958e8f58bf59a87f8053851673ef8"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "256d21542ab2ccf04a433fdb025a466ca5c28ec6c63ee69d1e71b41b475efbac"
 dependencies = [
  "axum",
  "bytes",
@@ -1686,9 +1689,9 @@ dependencies = [
 
 [[package]]
 name = "matchit"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dfc802da7b1cf80aefffa0c7b2f77247c8b32206cc83c270b61264f5b360a80"
+checksum = "b87248edafb776e59e6ee64a79086f65890d3510f2c656c000bf2a7e8a0aea40"
 
 [[package]]
 name = "md5"

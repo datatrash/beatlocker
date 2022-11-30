@@ -20,14 +20,7 @@ pub struct TestClient {
 }
 
 impl TestClient {
-    pub fn new<S>(router: Router<S, Body>) -> Self
-    where
-        S: Clone + Send + Sync + 'static,
-    {
-        Self::from_service(router.into_service())
-    }
-
-    pub fn from_service<S, ResBody>(svc: S) -> Self
+    pub fn new<S, ResBody>(svc: S) -> Self
     where
         S: Service<Request<Body>, Response = http::Response<ResBody>> + Clone + Send + 'static,
         ResBody: HttpBody + Send + 'static,

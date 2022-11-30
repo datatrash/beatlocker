@@ -95,6 +95,7 @@ async fn main() -> AppResult<()> {
     let tasks = vec![
         app.import_all_folders().await?,
         app.import_external_metadata().await?,
+        app.remove_deleted_files().await?,
         app.optimize_database().await?,
     ];
     let join = tokio::spawn(async move {

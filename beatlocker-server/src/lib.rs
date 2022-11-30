@@ -14,7 +14,7 @@ use crate::db::Db;
 use crate::errors::AppError;
 use axum::http::{HeaderMap, HeaderValue, Method};
 
-use axum::{routing::get, Router, RouterService};
+use axum::{routing::get, Router};
 use chrono::{DateTime, Utc};
 use const_format::formatcp;
 use serde::{Deserialize, Serialize};
@@ -73,7 +73,7 @@ impl Default for ServerOptions {
 
 pub struct App {
     pub options: ServerOptions,
-    pub app: RouterService,
+    pub app: Router,
     pub state: SharedState,
     pub task_manager: Arc<TaskManager>,
 }
